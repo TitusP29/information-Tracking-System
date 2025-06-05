@@ -1,9 +1,17 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Bell, UserCheck, Settings, LogOut, RefreshCw, CalendarCheck2, ClipboardList, Users } from 'lucide-react';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // Add token/session clearing here if needed in the future
+    navigate('/');
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -13,7 +21,7 @@ export default function AdminDashboard() {
         <div className="space-x-2">
           <Button variant="outline" className="flex items-center gap-1"><Settings size={16} /> Settings</Button>
           <Button variant="secondary" className="flex items-center gap-1"><RefreshCw size={16} /> Refresh Data</Button>
-          <Button variant="destructive" className="flex items-center gap-1"><LogOut size={16} /> Logout</Button>
+          <Button variant="destructive" className="flex items-center gap-1" onClick={handleLogout}><LogOut size={16} /> Logout</Button>
         </div>
       </div>
 
