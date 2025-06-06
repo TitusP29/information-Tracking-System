@@ -11,11 +11,11 @@ const ApplicationIntake = () => {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
+  useEffect(() => { 
     const fetchCourses = async () => {
       const { data, error } = await supabase
         .from('courses')
-        .select('name, duration, status, mode, description'); // Select the fields you need
+        .select('name, duration,status, mode, description'); // Select the fields you need
 
       if (error) {
         console.error('Error fetching courses:', error);
@@ -70,9 +70,9 @@ const ApplicationIntake = () => {
               <h3 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-2">{course.name}</h3>
               <div className="flex justify-end -mt-8 mb-4">
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  course.Status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  course.status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                 }`}>
-                  {course.Status}
+                  {course.status}
                 </span>
               </div>
               <p className="text-gray-600 text-sm mb-1"><span className="font-semibold">Duration:</span> {course.duration}</p>
@@ -81,7 +81,7 @@ const ApplicationIntake = () => {
             </div>
             
             <div className="mt-auto">
-              {course.Status === 'Open' ? (
+              {course.status === 'Open' ? (
                 <button
                   onClick={() => handleApply(course.name)}
                   className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
@@ -108,7 +108,7 @@ const ApplicationIntake = () => {
             <h2 className="text-2xl font-bold mb-4">{selectedCourse.name}</h2>
             <p className="mb-2"><span className="font-semibold">Duration:</span> {selectedCourse.duration}</p>
             <p className="mb-2"><span className="font-semibold">Mode:</span> {selectedCourse.mode}</p>
-            <p className="mb-4"><span className="font-semibold">Status:</span> {selectedCourse.Status}</p>
+            <p className="mb-4"><span className="font-semibold">Status:</span> {selectedCourse.status}</p>
             <p className="mb-6"><strong>Description:</strong> {selectedCourse.description}</p>
             <button 
               onClick={handleCloseDetails}
