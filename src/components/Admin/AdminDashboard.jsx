@@ -3,9 +3,49 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Bell, UserCheck, Settings, LogOut, RefreshCw, CalendarCheck2, ClipboardList, Users } from 'lucide-react';
+import Notifications from './Notifications';
+import RegProgress from './RegProgress';
+import ViewReg from './ViewReg';
+import ManageCourse from './ManageCourse';
+import ManageStudent from './ManageStudent';
+import { useState } from 'react';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(0);
+  const tabs = [
+    {
+      label: 'Notifications',
+      icon: <Bell size={16} />,
+      activeClass: 'bg-blue-500 text-white',
+      inactiveClass: 'bg-blue-100 text-blue-800',
+    },
+    {
+      label: 'Registration Progress',
+      icon: <ClipboardList size={16} />,
+      activeClass: 'bg-emerald-700 text-white',
+      inactiveClass: 'bg-emerald-100 text-emerald-800',
+    },
+    {
+      label: 'View Registration',
+      icon: <CalendarCheck2 size={16} />,
+      activeClass: 'bg-emerald-700 text-white',
+      inactiveClass: 'bg-emerald-100 text-emerald-800',
+    },
+    {
+      label: 'Manage Course Applications',
+      icon: <CalendarCheck2 size={16} />,
+      activeClass: 'bg-emerald-700 text-white',
+      inactiveClass: 'bg-emerald-100 text-emerald-800',
+    },
+    {
+      label: 'Manage Students',
+      icon: <Users size={16} />,
+      activeClass: 'bg-blue-500 text-white',
+      inactiveClass: 'bg-blue-100 text-blue-800',
+      variant: 'secondary',
+    },
+  ];
 
   const handleLogout = () => {
     // Add token/session clearing here if needed in the future
@@ -56,45 +96,28 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <Button className="bg-blue-500 text-white flex items-center gap-2"><Bell size={16} /> Notifications</Button>
-        <Button className="bg-emerald-700 text-white flex items-center gap-2"><ClipboardList size={16} /> Registration Progress</Button>
-        <Button className="bg-emerald-700 text-white flex items-center gap-2"><CalendarCheck2 size={16} /> Access Registration</Button>
-        <Button className="bg-emerald-700 text-white flex items-center gap-2"><CalendarCheck2 size={16} /> Manage Course Applications</Button>
+      {/* Tabbed Navbar */}
+      <div className="flex flex-wrap gap-3 border-b pb-2 mb-4">
+        {tabs.map((tab, idx) => (
+          <Button
+            key={tab.label}
+            className={`flex items-center gap-2 ${activeTab === idx ? tab.activeClass : tab.inactiveClass}`}
+            variant={tab.variant || 'default'}
+            onClick={() => setActiveTab(idx)}
+          >
+            {tab.icon}
+            {tab.label}
+          </Button>
+        ))}
       </div>
 
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Student Registrations</h2>
-        <div className="space-x-2">
-          <Button variant="secondary" className="flex items-center gap-1 text-blue-700"><Users size={16} /> Show Active Students</Button>
-          <Button variant="outline">Show All</Button>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm text-left">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="px-4 py-2">Student Num</th>
-              <th className="px-4 py-2">Name</th>
-              <th className="px-4 py-2">Email</th>
-              <th className="px-4 py-2">Course</th>
-              <th className="px-4 py-2">Registration Status</th>
-              <th className="px-4 py-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {/* Example row */}
-            <tr>
-              <td className="border px-4 py-2">STU001</td>
-              <td className="border px-4 py-2">John Doe</td>
-              <td className="border px-4 py-2">john@example.com</td>
-              <td className="border px-4 py-2">React Basics</td>
-              <td className="border px-4 py-2">Approved</td>
-              <td className="border px-4 py-2">Edit | Delete</td>
-            </tr>
-          </tbody>
-        </table>
+      {/* Tab Content */}
+      <div className="mt-2">
+        {activeTab === 0 && <Notifications />}
+        {activeTab === 1 && <RegProgress />}
+        {activeTab === 2 && <ViewReg />}
+        {activeTab === 3 && <ManageCourse />}
+        {activeTab === 4 && <ManageStudent />}
       </div>
     </div>
   );
