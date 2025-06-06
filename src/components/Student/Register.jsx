@@ -1,15 +1,32 @@
 import React, { useState } from 'react';
 
-const GasRegistrationForm = () => {
+const RegistrationForm = () => {
   const [formData, setFormData] = useState({
-    fullName: '',
-    address: '',
+    nationalId: '',
+    altIdType: '',
+    surname: '',
+    firstName: '',
+    title: '',
+    dob: '',
+    homeAddress: '',
+    homePostalCode: '',
+    homePhone: '',
+    postalAddress: '',
+    postalCode: '',
+    cellPhone: '',
+    employer: '',
+    workAddress: '',
+    workPhone: '',
+    fax: '',
     email: '',
-    phone: '',
-    course: ''
+    maidenSurname: '',
+    kinName: '',
+    kinCell: '',
+    skillsProgramme: '',
+    disability: '',
+    signature: '',
+    regDate: ''
   });
-
-  const [status, setStatus] = useState('pending');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,119 +39,44 @@ const GasRegistrationForm = () => {
   };
 
   return (
-    <div className="gas-registration-container">
-      <div className="gas-registration-header">
-        <h2>Gas Registration</h2>
-        <div className="header-controls">
-          <button className="back-btn">Back</button>
-          <button className="logout-btn">Logout</button>
+    <form className="max-w-5xl mx-auto p-8 bg-white rounded shadow" onSubmit={handleSubmit}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <input type="text" name="nationalId" value={formData.nationalId} onChange={handleChange} placeholder="National ID No" className="border rounded px-3 py-2" />
+        <input type="text" name="altIdType" value={formData.altIdType} onChange={handleChange} placeholder="Alternative ID type" className="border rounded px-3 py-2" />
+        <input type="text" name="surname" value={formData.surname} onChange={handleChange} placeholder="Surname" className="border rounded px-3 py-2" />
+        <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="First name" className="border rounded px-3 py-2" />
+        <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Title" className="border rounded px-3 py-2" />
+        <input type="date" name="dob" value={formData.dob} onChange={handleChange} placeholder="yyyy/mm/dd" className="border rounded px-3 py-2" />
+        <input type="text" name="homeAddress" value={formData.homeAddress} onChange={handleChange} placeholder="Home address" className="border rounded px-3 py-2" />
+        <input type="text" name="homePostalCode" value={formData.homePostalCode} onChange={handleChange} placeholder="Home postal code" className="border rounded px-3 py-2" />
+        <input type="text" name="homePhone" value={formData.homePhone} onChange={handleChange} placeholder="Home phone number" className="border rounded px-3 py-2" />
+        <input type="text" name="postalAddress" value={formData.postalAddress} onChange={handleChange} placeholder="Postal address" className="border rounded px-3 py-2" />
+        <input type="text" name="postalCode" value={formData.postalCode} onChange={handleChange} placeholder="Postal code" className="border rounded px-3 py-2" />
+        <input type="text" name="cellPhone" value={formData.cellPhone} onChange={handleChange} placeholder="Cell phone number" className="border rounded px-3 py-2" />
+        <input type="text" name="employer" value={formData.employer} onChange={handleChange} placeholder="Name of employer" className="border rounded px-3 py-2" />
+        <input type="text" name="workAddress" value={formData.workAddress} onChange={handleChange} placeholder="Work address" className="border rounded px-3 py-2" />
+        <input type="text" name="workPhone" value={formData.workPhone} onChange={handleChange} placeholder="Work phone number" className="border rounded px-3 py-2" />
+        <input type="text" name="fax" value={formData.fax} onChange={handleChange} placeholder="Fax number" className="border rounded px-3 py-2" />
+        <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email address" className="border rounded px-3 py-2" />
+        <input type="text" name="maidenSurname" value={formData.maidenSurname} onChange={handleChange} placeholder="Maiden surname" className="border rounded px-3 py-2" />
+        <input type="text" name="kinName" value={formData.kinName} onChange={handleChange} placeholder="Next of kin name" className="border rounded px-3 py-2" />
+        <input type="text" name="kinCell" value={formData.kinCell} onChange={handleChange} placeholder="Next of kin cell number" className="border rounded px-3 py-2" />
+        <input type="text" name="skillsProgramme" value={formData.skillsProgramme} onChange={handleChange} placeholder="Skills Programme" className="border rounded px-3 py-2" />
+      </div>
+      <textarea name="disability" value={formData.disability} onChange={handleChange} placeholder="Specify disability if applicable" className="border rounded px-3 py-2 w-full mb-4" rows={2} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end mb-4">
+        <div className="flex flex-col">
+          <label className="font-semibold mb-1">Signature:</label>
+          <input type="text" name="signature" value={formData.signature} onChange={handleChange} className="border rounded px-3 py-2" />
+        </div>
+        <div className="flex flex-col">
+          <label className="font-semibold mb-1">Date:</label>
+          <input type="date" name="regDate" value={formData.regDate} onChange={handleChange} className="border rounded px-3 py-2" />
         </div>
       </div>
-
-      <div className="registration-info">
-        Please fill in the form below to complete your gas registration.
-      </div>
-
-      <form className="registration-form" onSubmit={handleSubmit}>
-        <div className="form-grid">
-          <input
-            type="text"
-            name="fullName"
-            placeholder="Full Name"
-            value={formData.fullName}
-            onChange={handleChange}
-            required
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-          <input
-            type="tel"
-            name="phone"
-            placeholder="Phone Number"
-            value={formData.phone}
-            onChange={handleChange}
-            required
-          />
-          <input
-            type="text"
-            name="address"
-            placeholder="Address"
-            value={formData.address}
-            onChange={handleChange}
-            required
-          />
-          <input
-            type="text"
-            name="course"
-            placeholder="Selected Course"
-            value={formData.course}
-            onChange={handleChange}
-            required
-          />
-        </div>
-          
-        <button className="submit-btn" type="submit">
-          Submit Registration
-        </button>
-      </form>
-
-      <div className="fees-section">
-        <h2>Fees Breakdown</h2>
-        <table className="fees-table">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Registration Fee</td>
-              <td>$50</td>
-            </tr>
-            <tr>
-              <td>Course Material</td>
-              <td>$30</td>
-            </tr>
-            <tr>
-              <td>Safety Equipment</td>
-              <td>$20</td>
-            </tr>
-            <tr>
-              <td><strong>Total</strong></td>
-              <td><strong>$100</strong></td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div className="payment-info">
-          <h3>Payment Instructions</h3>
-          <ul>
-            <li>Transfer the fee to account number: 123456789</li>
-            <li>Bank: ABC Bank</li>
-            <li>Use your full name as the payment reference</li>
-          </ul>
-          <p>
-            For any inquiries, contact us at <a href="mailto:support@gasportal.com">support@gasportal.com</a>
-          </p>
-        </div>
-      </div>
-
-      <div className="selected-course-info">
-        <h3>Selected Course Details</h3>
-        <div className="course-details">
-          <p><strong>Course Name:</strong> {formData.course || 'N/A'}</p>
-          <p><strong>Status:</strong> <span className={`status-badge ${status}`}>{status}</span></p>
-        </div>
-      </div>
-    </div>
+      <button type="submit" className="bg-blue-600 text-white font-bold py-2 px-6 rounded hover:bg-blue-700 transition">Submit</button>
+    </form>
   );
 };
 
-export default GasRegistrationForm;
+export default RegistrationForm;
