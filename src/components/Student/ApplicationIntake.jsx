@@ -11,7 +11,7 @@ const ApplicationIntake = () => {
 
   const navigate = useNavigate();
 
-  useEffect(() => { 
+  useEffect(() => {
     const fetchCourses = async () => {
       const { data, error } = await supabase
         .from('courses')
