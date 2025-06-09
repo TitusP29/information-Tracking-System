@@ -26,28 +26,43 @@ function Documents() {
 
   const fetchUserDocuments = async () => {
     if (!user) return;
-
-    try {
-      const { data: docsData, error: docsError } = await supabase
-        .from('documents')
-        .select(`
-          *,
-          attachments (
-            id,
-            file_name,
-            file_path,
-            url
-          )
-        `)
-        .eq('user_id', user.id);
-
-      if (docsError) throw docsError;
-      setDocuments(docsData || []);
-    } catch (error) {
-      console.error('Error fetching documents:', error);
-      setMessage('Failed to load documents');
+  
+    const { data: docsData, error: docsError } = await supabase
+      .from('documents')
+      .select('*, attachments(*)')
+      .eq('user_id', user.id)
+      .single();
+  
+    if (docsError) {
+      console.error('Error fetching user documents:', docsError);
+      setDocuments({});
+      return;
     }
+  
+    if (docsData?.attachments?.length) {
+      const updatedAttachments = await Promise.all(
+        docsData.attachments.map(async (attachment) => {
+          const { data, error } = await supabase.storage
+            .from('documents')
+            .createSignedUrl(attachment.file_path, 3600); // 1 hour expiry
+  
+          if (error) {
+            console.error('Signed URL error:', error);
+            return { ...attachment, signedUrl: null };
+          }
+  
+          return { ...attachment, signedUrl: data.signedUrl };
+        })
+      );
+  
+      docsData.attachments = updatedAttachments;
+    }
+  
+    setDocuments(docsData || {});
   };
+  
+
+  
 
   const handleFileChange = async (e, docType) => {
     const file = e.target.files[0];
@@ -71,52 +86,91 @@ function Documents() {
 
   const uploadDocument = async (file, docType) => {
     if (!user) return;
-
+  
     setUploading(true);
     setMessage('Uploading...');
-
+  
     try {
-      // Upload file to Supabase Storage
-      const fileName = `${user.id}/${docType}_${Date.now()}${file.name}`;
+      const fileName = `${user.id}/${docType}_${Date.now()}_${file.name}`;
+      // const arrayBuffer = await file.arrayBuffer();
+      // const uploadBlob = new Blob([arrayBuffer], { type: file.type });
+  
+      console.log('Attempting to upload file:', file.name, 'Type:', file.type, 'Size:', file.size);
+
+      // ---- START NEW DEBUG CODE ----
+      const reader = new FileReader();
+      reader.onloadend = function() {
+        const first500Chars = reader.result.substring(0, 500);
+        console.log('First 500 chars of file content before upload:', first500Chars);
+      };
+      reader.onerror = function() {
+        console.error('FileReader error:', reader.error);
+      };
+      reader.readAsText(file.slice(0, 500)); // Read only the first 500 bytes as text for inspection
+      // ---- END NEW DEBUG CODE ----
+
       const { data: fileData, error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(fileName, file);
-
+        .upload(fileName, file, {
+          contentType: file.type
+        });
+  
       if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('documents')
-        .getPublicUrl(fileName);
-
-      // First create or update document record
+  
       const { data: docData, error: docError } = await supabase
         .from('documents')
         .upsert({
           user_id: user.id,
-          type: docType,
-          status: 'UPLOADED',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          status: 'UPLOADED'
         })
         .select()
         .single();
-
+  
       if (docError) throw docError;
-
-      // Then create attachment record linked to document
+  
       const { error: attachError } = await supabase
         .from('attachments')
         .insert({
           document_id: docData.id,
-          file_name: file.name,
-          file_path: fileName,
-          url: publicUrl,
+          file_path: fileName, // Save path, not public URL
+          file_type: file.type,
+          type: docType,
           uploaded_at: new Date().toISOString()
         });
-
+  
       if (attachError) throw attachError;
-
+  
+      const booleanField = {
+        id: 'id_uploaded',
+        certificate: 'certificate_uploaded',
+        residence: 'residence_uploaded',
+        payment: 'payment_uploaded'
+      }[docType];
+  
+      if (booleanField) {
+        const updates = { [booleanField]: true };
+  
+        const { data: docStatus } = await supabase
+          .from('documents')
+          .select('id_uploaded,certificate_uploaded,residence_uploaded,payment_uploaded')
+          .eq('id', docData.id)
+          .single();
+  
+        if (
+          docStatus?.id_uploaded &&
+          docStatus?.certificate_uploaded &&
+          docStatus?.residence_uploaded &&
+          docStatus?.payment_uploaded
+        ) {
+          updates.status = 'approved';
+        }
+  
+        await supabase
+          .from('documents')
+          .update(updates)
+          .eq('id', docData.id);
+      }
+  
       setMessage('Document uploaded successfully');
       fetchUserDocuments();
     } catch (error) {
@@ -127,6 +181,8 @@ function Documents() {
       setSelectedDocType('');
     }
   };
+  
+  
 
   const removeDocument = async (docId) => {
     if (!user) return;
@@ -141,7 +197,7 @@ function Documents() {
       // Delete from storage
       const { error: storageError } = await supabase.storage
         .from('documents')
-        .remove([doc.attachments[0].file_path]);
+        .remove([doc.attachments[0].file_url]);
 
       if (storageError) throw storageError;
 
@@ -172,9 +228,7 @@ function Documents() {
   };
 
   const getDocumentStatus = (docType) => {
-    return documents.some(doc => doc.type === docType && doc.attachments?.length > 0)
-      ? 'UPLOADED'
-      : 'MISSING';
+    return documents && documents[`${docType}_uploaded`];
   };
 
   const handleUploadClick = (docId) => {
@@ -206,14 +260,14 @@ function Documents() {
           <div className="flex items-center gap-2">
             <span className="font-semibold">Status:</span>
             <span className={`px-3 py-1 rounded-md ${
-              documents.length === REQUIRED_DOCUMENTS.length 
+              Object.keys(documents).length === REQUIRED_DOCUMENTS.length 
                 ? 'bg-emerald-100 text-emerald-800' 
                 : 'bg-yellow-100 text-yellow-800'
             }`}>
-              {documents.length === REQUIRED_DOCUMENTS.length ? 'Documents Uploaded' : 'Pending Documents'}
+              {Object.keys(documents).length === REQUIRED_DOCUMENTS.length ? 'Documents Uploaded' : 'Pending Documents'}
             </span>
           </div>
-          {documents.length === REQUIRED_DOCUMENTS.length && (
+          {Object.keys(documents).length === REQUIRED_DOCUMENTS.length && (
             <p className="text-emerald-600 mt-2 italic">
               Thank you for uploading all your documents.
               <br />
@@ -223,7 +277,22 @@ function Documents() {
         </CardContent>
       </Card>
 
-      <h2 className="text-xl font-semibold mb-4">Required Documents</h2>
+      <h2 className="text-xl font-bold mb-4">Document Upload Progress</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {REQUIRED_DOCUMENTS.map(doc => {
+          const uploaded = getDocumentStatus(doc.id);
+          return (
+            <div key={doc.id} className="flex items-center gap-4 p-4 bg-white rounded shadow">
+              <span className="font-semibold">{doc.label}:</span>
+              <span className={`px-2 py-1 rounded text-xs font-semibold ${uploaded ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {uploaded ? 'Uploaded' : 'Missing'}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <h2 className="text-xl font-bold mb-4">Required Documents</h2>
       
       {message && (
         <div className="mb-4 p-3 rounded bg-blue-50 text-blue-700">
@@ -233,8 +302,7 @@ function Documents() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {REQUIRED_DOCUMENTS.map((doc) => {
-          const status = getDocumentStatus(doc.id);
-          const existingDoc = documents.find(d => d.type === doc.id);
+          const existingDoc = documents && documents[doc.id];
           const attachment = existingDoc?.attachments?.[0];
 
           return (
@@ -246,30 +314,32 @@ function Documents() {
                       <h3 className="font-semibold text-gray-800">{doc.label}</h3>
                       {attachment && (
                         <p className="text-sm text-gray-500 mt-1">
-                          File: {attachment.file_name}
+                          File: {attachment.file_url}
                         </p>
                       )}
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      status === 'UPLOADED' 
+                      getDocumentStatus(doc.id) 
                         ? 'bg-emerald-100 text-emerald-800' 
                         : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {status}
+                      {getDocumentStatus(doc.id) ? 'UPLOADED' : 'MISSING'}
                     </span>
                   </div>
                   
                   <div className="flex justify-end gap-2 mt-2">
-                    {status === 'UPLOADED' ? (
+                    {getDocumentStatus(doc.id) ? (
                       <>
                         <a
-                          href={attachment?.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm"
-                        >
-                          View
-                        </a>
+                            href={attachment.signedUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm"
+                          >
+                            Download
+                          </a>
+
                         <button
                           onClick={() => removeDocument(existingDoc.id)}
                           className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm"
