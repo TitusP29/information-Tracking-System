@@ -5,6 +5,42 @@ const RegProgress = () => {
   const [students, setStudents] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [message, setMessage] = useState('');
+
+  const handleDocumentVerification = async (docType, userId) => {
+    if (!userId) return;
+
+    try {
+      // Map document types to their corresponding column names
+      const columnMap = {
+        'id': { uploaded: 'id_uploaded', verified: 'identitydoc' },
+        'certificate': { uploaded: 'certificate_uploaded', verified: 'academicrecord' },
+        'residence': { uploaded: 'residence_uploaded', verified: 'proofofaddress' },
+        'payment': { uploaded: 'payment_uploaded', verified: 'paymentproof' }
+      };
+
+      const columns = columnMap[docType];
+      if (!columns) return;
+
+      // Update both the uploaded and verified columns
+      const { error } = await supabase
+        .from('documents')
+        .update({
+          [columns.uploaded]: true,
+          [columns.verified]: true
+        })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      // Refresh the student data
+      await fetchStudents();
+      setMessage('Document verified successfully');
+    } catch (error) {
+      console.error('Error verifying document:', error);
+      setMessage('Failed to verify document');
+    }
+  };
 
   useEffect(() => {
     fetchStudents();
@@ -54,13 +90,13 @@ const RegProgress = () => {
   
       attachments = await Promise.all(
         (attData || []).map(async (attachment) => {
-          const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+          const { data } = supabase.storage
             .from('documents')
-            .createSignedUrl(attachment.file_path, 60 * 60); // 1 hour expiry
-  
+            .getPublicUrl(attachment.file_path);
+
           return {
             ...attachment,
-            file_url: signedUrlData?.signedUrl || null, // provide file_url for preview logic// keep original DB path
+            file_url: data?.publicUrl || null,
             file_type: attachment.file_type,
           };
         })
@@ -70,9 +106,6 @@ const RegProgress = () => {
     setSelectedStudent({ ...student, attachments });
     setModalOpen(true);
   };
-  
-
-
 
   return (
     <div className="p-6">
@@ -237,13 +270,23 @@ function ProgressStep({ label, required, status, lastUpdated, onUpdate, showView
                 <div key={type} className="p-2 border rounded bg-white flex flex-col mb-2">
                   <span className="font-medium">{type.charAt(0).toUpperCase() + type.slice(1)}</span>
                   {doc ? (
-                    <button
-                      className="text-blue-600 underline mt-1 text-left"
-                      onClick={() => {
-                        console.log('PreviewDoc:', doc);
-                        setPreviewDoc(doc);
-                      }}
-                    >View File</button>
+                    <div className="flex items-center gap-2 mt-1">
+                      <button
+                        className="text-blue-600 underline text-left"
+                        onClick={() => {
+                          setPreviewDoc(doc);
+                        }}
+                      >View File</button>
+                      <button
+                        onClick={() => handleDocumentVerification(type, doc.user_id)}
+                        className="inline-flex items-center px-2 py-1 bg-emerald-500 text-white text-xs font-semibold rounded hover:bg-emerald-600 transition-colors"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Verify
+                      </button>
+                    </div>
                   ) : (
                     <span className="text-red-500 text-xs mt-1">Not Uploaded</span>
                   )}
@@ -258,12 +301,64 @@ function ProgressStep({ label, required, status, lastUpdated, onUpdate, showView
                   <span className="font-semibold">Preview: {previewDoc.type.charAt(0).toUpperCase() + previewDoc.type.slice(1)}</span>
                   <button className="text-red-600 font-bold" onClick={() => setPreviewDoc(null)}>Close</button>
                 </div>
+                {message && (
+                  <div className="mb-4 p-3 rounded bg-green-50 text-green-700">
+                    {message}
+                  </div>
+                )}
                 {previewDoc.file_type === 'application/pdf' ? (
-                  <embed src={previewDoc.file_url} type="application/pdf" width="100%" height="500px" />
+                  <div className="text-center p-8">
+                    <p className="mb-4 text-gray-600">Click the button below to view the PDF in a new tab</p>
+                    <div className="flex justify-center gap-4">
+                      <a 
+                        href={previewDoc.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        View PDF Document
+                      </a>
+                      <button
+                        onClick={() => handleDocumentVerification(previewDoc.type, previewDoc.user_id)}
+                        className="inline-flex items-center px-6 py-3 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 transition-colors"
+                      >
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Verify Document
+                      </button>
+                    </div>
+                  </div>
                 ) : previewDoc.file_type.startsWith('image/') ? (
-                  <img src={previewDoc.file_url} alt={previewDoc.type} className="max-h-96 w-auto mx-auto" />
+                  <div className="text-center">
+                    <img src={previewDoc.file_url} alt={previewDoc.type} className="max-h-96 w-auto mx-auto mb-4" />
+                    <button
+                      onClick={() => handleDocumentVerification(previewDoc.type, previewDoc.user_id)}
+                      className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Verify Document
+                    </button>
+                  </div>
                 ) : (
-                  <a href={previewDoc.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Download File</a>
+                  <div className="text-center p-4">
+                    <p className="mb-2">This file type cannot be previewed directly.</p>
+                    <div className="flex justify-center gap-4">
+                      <a 
+                        href={previewDoc.file_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-blue-600 hover:text-blue-800 underline"
+                      >
+                        Download File
+                      </a>
+                      <button
+                        onClick={() => handleDocumentVerification(previewDoc.type, previewDoc.user_id)}
+                        className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        Verify Document
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
