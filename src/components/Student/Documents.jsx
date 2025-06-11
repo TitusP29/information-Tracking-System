@@ -93,27 +93,22 @@ function Documents() {
   
     try {
       const fileName = `${user.id}/${docType}_${Date.now()}_${file.name}`;
-      // const arrayBuffer = await file.arrayBuffer();
-      // const uploadBlob = new Blob([arrayBuffer], { type: file.type });
-  
-      console.log('Attempting to upload file:', file.name, 'Type:', file.type, 'Size:', file.size);
-
-      // ---- START NEW DEBUG CODE ----
-      const reader = new FileReader();
-      reader.onloadend = function() {
-        const first500Chars = reader.result.substring(0, 500);
-        console.log('First 500 chars of file content before upload:', first500Chars);
-      };
-      reader.onerror = function() {
-        console.error('FileReader error:', reader.error);
-      };
-      reader.readAsText(file.slice(0, 500)); // Read only the first 500 bytes as text for inspection
-      // ---- END NEW DEBUG CODE ----
+      
+      // Ensure proper content type for PDFs
+      const contentType = file.type === 'application/pdf' ? 'application/pdf' : file.type;
+      
+      console.log('Uploading file:', {
+        name: file.name,
+        type: contentType,
+        size: file.size
+      });
 
       const { data: fileData, error: uploadError } = await supabase.storage
         .from('documents')
         .upload(fileName, file, {
-          contentType: file.type
+          contentType: file.type,
+          cacheControl: '3600',
+          upsert: false
         });
   
       if (uploadError) throw uploadError;
@@ -133,8 +128,8 @@ function Documents() {
         .from('attachments')
         .insert({
           document_id: docData.id,
-          file_path: fileName, // Save path, not public URL
-          file_type: file.type,
+          file_path: fileName,
+          file_type: contentType,
           type: docType,
           uploaded_at: new Date().toISOString()
         });
@@ -149,27 +144,28 @@ function Documents() {
       }[docType];
   
       if (booleanField) {
-        const updates = { [booleanField]: true };
-  
+        await supabase
+          .from('documents')
+          .update({ [booleanField]: true })
+          .eq('id', docData.id);
+
         const { data: docStatus } = await supabase
           .from('documents')
           .select('id_uploaded,certificate_uploaded,residence_uploaded,payment_uploaded')
           .eq('id', docData.id)
           .single();
-  
+
         if (
           docStatus?.id_uploaded &&
           docStatus?.certificate_uploaded &&
           docStatus?.residence_uploaded &&
           docStatus?.payment_uploaded
         ) {
-          updates.status = 'approved';
+          await supabase
+            .from('documents')
+            .update({ status: 'approved' })
+            .eq('id', docData.id);
         }
-  
-        await supabase
-          .from('documents')
-          .update(updates)
-          .eq('id', docData.id);
       }
   
       setMessage('Document uploaded successfully');
