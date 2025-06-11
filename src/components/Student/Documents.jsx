@@ -27,25 +27,26 @@ function Documents() {
   const fetchUserDocuments = async () => {
     if (!user) return;
   
+
     const { data: docsData, error: docsError } = await supabase
       .from('documents')
       .select('*, attachments(*)')
-      .eq('user_id', user.id)
-      .single();
-  
+      .eq('user_id', user.id);
+    
     if (docsError) {
       console.error('Error fetching user documents:', docsError);
       setDocuments({});
       return;
     }
-  
-    if (docsData?.attachments?.length) {
+    
+    if (docsData?.length) {
+      const allAttachments = docsData.flatMap(doc => doc.attachments || []);
       const updatedAttachments = await Promise.all(
-        docsData.attachments.map(async (attachment) => {
+        allAttachments.map(async (attachment) => {
           const { data, error } = await supabase.storage
             .from('documents')
             .createSignedUrl(attachment.file_path, 3600); // 1 hour expiry
-  
+          
           if (error) {
             console.error('Signed URL error:', error);
             return { ...attachment, signedUrl: null };
