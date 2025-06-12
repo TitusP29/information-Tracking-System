@@ -13,6 +13,25 @@ import { useState } from 'react';
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState({
+    notifications: true,
+    autoRefresh: false,
+    darkMode: false,
+    emailNotifications: true
+  });
+
+  const handleSettingsChange = (key) => {
+    setSettings(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const handleRefreshData = () => {
+    window.location.reload();
+  };
+
   const tabs = [
     {
       label: 'Notifications',
@@ -59,11 +78,109 @@ export default function AdminDashboard() {
           <Users className="text-blue-600" /> Admin Dashboard
         </h1>
         <div className="space-x-2">
-          <Button variant="outline" className="flex items-center gap-1"><Settings size={16} /> Settings</Button>
-          <Button variant="secondary" className="flex items-center gap-1"><RefreshCw size={16} /> Refresh Data</Button>
-          <Button variant="destructive" className="flex items-center gap-1" onClick={handleLogout}><LogOut size={16} /> Logout</Button>
+          <Button variant="outline" className="flex items-center gap-1" onClick={() => setShowSettings(true)}>
+            <Settings size={16} /> Settings
+          </Button>
+          <Button variant="secondary" className="flex items-center gap-1" onClick={handleRefreshData}>
+            <RefreshCw size={16} /> Refresh Data
+          </Button>
+          <Button variant="destructive" className="flex items-center gap-1" onClick={handleLogout}>
+            <LogOut size={16} /> Logout
+          </Button>
         </div>
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl"
+              onClick={() => setShowSettings(false)}
+            >
+              &times;
+            </button>
+            <h2 className="text-2xl font-bold mb-4">Settings</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold">In-App Notifications</h3>
+                  <p className="text-sm text-gray-500">Receive notifications within the application</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={settings.notifications}
+                    onChange={() => handleSettingsChange('notifications')}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold">Auto Refresh</h3>
+                  <p className="text-sm text-gray-500">Automatically refresh data periodically</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={settings.autoRefresh}
+                    onChange={() => handleSettingsChange('autoRefresh')}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold">Dark Mode</h3>
+                  <p className="text-sm text-gray-500">Switch to dark theme</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={settings.darkMode}
+                    onChange={() => handleSettingsChange('darkMode')}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold">Email Notifications</h3>
+                  <p className="text-sm text-gray-500">Receive notifications via email</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={settings.emailNotifications}
+                    onChange={() => handleSettingsChange('emailNotifications')}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowSettings(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => {
+                // Save settings logic here
+                setShowSettings(false);
+              }}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-blue-500 text-white">
