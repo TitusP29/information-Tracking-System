@@ -40,19 +40,85 @@ const RegProgress = () => {
       setStudents([]);
       return;
     }
-    // For each student, fetch their document status from documents table
-    const studentsWithStatus = await Promise.all((data || []).map(async (student) => {
-      const { data: docData, error: docError } = await supabase
-        .from('documents')
-        .select('status')
-        .eq('user_id', student.user_id)
+    // For each student, fetch their progress from progress_management table
+    const studentsWithProgress = await Promise.all((data || []).map(async (student) => {
+      const { data: progressData, error: progressError } = await supabase
+        .from('progress_management')
+        .select('*')
+        .eq('student_number', student.national_id)
         .single();
+      
+      // If no progress record exists, create one
+      if (!progressData && !progressError) {
+        const { data: newProgress, error: createError } = await supabase
+          .from('progress_management')
+          .insert({
+            student_number: student.national_id,
+            application_submitted: 'pending',
+            document_uploaded: 'pending',
+            payment_verified: 'pending',
+            application_review: 'pending'
+          })
+          .select()
+          .single();
+        
+        return {
+          ...student,
+          progress: newProgress || {
+            application_submitted: 'pending',
+            document_uploaded: 'pending',
+            payment_verified: 'pending',
+            application_review: 'pending'
+          }
+        };
+      }
+
       return {
         ...student,
-        document_status: docData?.status || 'pending',
+        progress: progressData || {
+          application_submitted: 'pending',
+          document_uploaded: 'pending',
+          payment_verified: 'pending',
+          application_review: 'pending'
+        }
       };
     }));
-    setStudents(studentsWithStatus);
+    setStudents(studentsWithProgress);
+  };
+
+  const updateProgress = async (studentNumber, field, status) => {
+    try {
+      const { data, error } = await supabase
+        .from('progress_management')
+        .update({ [field]: status })
+        .eq('student_number', studentNumber)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local state
+      setStudents(prevStudents => 
+        prevStudents.map(student => 
+          student.national_id === studentNumber
+            ? { ...student, progress: { ...student.progress, [field]: status } }
+            : student
+        )
+      );
+
+      // Update selected student if modal is open
+      if (selectedStudent && selectedStudent.national_id === studentNumber) {
+        setSelectedStudent(prev => ({
+          ...prev,
+          progress: { ...prev.progress, [field]: status }
+        }));
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error updating progress:', error);
+      throw error;
+    }
   };
 
   const handleViewProgress = async (student) => {
@@ -112,8 +178,13 @@ const RegProgress = () => {
                 <td className="px-6 py-3 border-b whitespace-nowrap text-sm font-medium text-gray-900 align-middle">{student.first_name} {student.surname}</td>
                 <td className="px-6 py-3 border-b whitespace-nowrap text-sm text-gray-700 align-middle">{student.course}</td>
                 <td className="px-6 py-3 border-b whitespace-nowrap text-sm align-middle">
-                  <span className={`px-2 py-1 rounded text-xs font-semibold ${student.document_status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                    {student.document_status === 'approved' ? 'Approved' : 'Pending'}
+                  <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                    student.progress?.application_review === 'complete' ? 'bg-green-100 text-green-700' : 
+                    student.progress?.application_review === 'rejected' ? 'bg-red-100 text-red-700' :
+                    'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {student.progress?.application_review === 'complete' ? 'Approved' : 
+                     student.progress?.application_review === 'rejected' ? 'Rejected' : 'Pending'}
                   </span>
                 </td>
                 <td className="px-6 py-3 border-b whitespace-nowrap text-sm text-gray-700 align-middle">{student.reg_date ? new Date(student.reg_date).toLocaleDateString() : ''}</td>
@@ -143,43 +214,23 @@ const RegProgress = () => {
               <ProgressStep
                 label="Application Submitted"
                 required
-                status={selectedStudent.documents?.application_status || 'complete'}
-                lastUpdated={selectedStudent.documents?.application_updated_at || selectedStudent.reg_date}
+                status={selectedStudent.progress?.application_submitted || 'pending'}
+                lastUpdated={selectedStudent.progress?.updated_at}
                 onUpdate={async (newStatus) => {
-                  await supabase.from('documents').update({ application_status: newStatus, application_updated_at: new Date().toISOString() }).eq('user_id', selectedStudent.user_id);
-                  await fetchStudents();
-                  setSelectedStudent(s => ({ ...s, documents: { ...s.documents, application_status: newStatus, application_updated_at: new Date().toISOString() } }));
+                  await updateProgress(selectedStudent.national_id, 'application_submitted', newStatus);
                 }}
                 previewDoc={previewDoc}
                 setPreviewDoc={setPreviewDoc}
               />
+
               {/* Documents Uploaded Step */}
               <ProgressStep
                 label="Documents Uploaded"
                 required
-                status={selectedStudent.documents?.documents_status || 'in_progress'}
-                lastUpdated={selectedStudent.documents?.documents_updated_at}
+                status={selectedStudent.progress?.document_uploaded || 'pending'}
+                lastUpdated={selectedStudent.progress?.updated_at}
                 onUpdate={async (newStatus) => {
-                  try {
-                    await supabase
-                      .from('documents')
-                      .update({
-                        documents_status: newStatus,
-                        documents_updated_at: new Date().toISOString()
-                      })
-                      .eq('user_id', selectedStudent.user_id);
-                    await fetchStudents();
-                    setSelectedStudent(s => ({ 
-                      ...s, 
-                      documents: { 
-                        ...s.documents, 
-                        documents_status: newStatus,
-                        documents_updated_at: new Date().toISOString()
-                      } 
-                    }));
-                  } catch (error) {
-                    console.error('Error updating documents status:', error);
-                  }
+                  await updateProgress(selectedStudent.national_id, 'document_uploaded', newStatus);
                 }}
                 showViewDocuments
                 attachments={selectedStudent.attachments || []}
@@ -191,29 +242,10 @@ const RegProgress = () => {
               <ProgressStep
                 label="Payment Verified"
                 required
-                status={selectedStudent.documents?.payment_status || 'in_progress'}
-                lastUpdated={selectedStudent.documents?.payment_updated_at}
+                status={selectedStudent.progress?.payment_verified || 'pending'}
+                lastUpdated={selectedStudent.progress?.updated_at}
                 onUpdate={async (newStatus) => {
-                  try {
-                    await supabase
-                      .from('documents')
-                      .update({
-                        payment_status: newStatus,
-                        payment_updated_at: new Date().toISOString()
-                      })
-                      .eq('user_id', selectedStudent.user_id);
-                    await fetchStudents();
-                    setSelectedStudent(s => ({ 
-                      ...s, 
-                      documents: { 
-                        ...s.documents, 
-                        payment_status: newStatus,
-                        payment_updated_at: new Date().toISOString()
-                      } 
-                    }));
-                  } catch (error) {
-                    console.error('Error updating payment status:', error);
-                  }
+                  await updateProgress(selectedStudent.national_id, 'payment_verified', newStatus);
                 }}
                 previewDoc={previewDoc}
                 setPreviewDoc={setPreviewDoc}
@@ -224,58 +256,40 @@ const RegProgress = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <span className={`inline-block w-5 h-5 rounded-full ${
-                      selectedStudent.documents?.application_status === 'complete' ? 'bg-green-500 border-2 border-green-700' :
-                      selectedStudent.documents?.application_status === 'rejected' ? 'bg-red-500 border-2 border-red-700 flex items-center justify-center' :
+                      selectedStudent.progress?.application_review === 'complete' ? 'bg-green-500 border-2 border-green-700' :
+                      selectedStudent.progress?.application_review === 'rejected' ? 'bg-red-500 border-2 border-red-700 flex items-center justify-center' :
                       'bg-yellow-400 border-2 border-yellow-600'
                     }`}>
-                      {selectedStudent.documents?.application_status === 'rejected' ? '✖' : ''}
+                      {selectedStudent.progress?.application_review === 'rejected' ? '✖' : ''}
                     </span>
                     <h4 className="text-lg font-semibold">Application Review</h4>
                   </div>
                   <div className="flex gap-2">
                     <button
                       className={`px-4 py-1 rounded ${
-                        selectedStudent.documents?.application_status === 'complete' ? 'bg-green-500 text-white' :
+                        selectedStudent.progress?.application_review === 'complete' ? 'bg-green-500 text-white' :
                         'bg-gray-200 text-gray-700'
                       } font-semibold`}
-                      onClick={() => {
-                        setSelectedStudent(s => ({
-                          ...s,
-                          documents: {
-                            ...s.documents,
-                            application_status: 'complete'
-                          }
-                        }));
+                      onClick={async () => {
+                        await updateProgress(selectedStudent.national_id, 'application_review', 'complete');
                       }}
                     >Approve</button>
                     <button
                       className={`px-4 py-1 rounded ${
-                        selectedStudent.documents?.application_status === 'in_progress' ? 'bg-blue-500 text-white' :
+                        selectedStudent.progress?.application_review === 'in_progress' ? 'bg-blue-500 text-white' :
                         'bg-gray-200 text-gray-700'
                       } font-semibold`}
-                      onClick={() => {
-                        setSelectedStudent(s => ({
-                          ...s,
-                          documents: {
-                            ...s.documents,
-                            application_status: 'in_progress'
-                          }
-                        }));
+                      onClick={async () => {
+                        await updateProgress(selectedStudent.national_id, 'application_review', 'in_progress');
                       }}
                     >In Progress</button>
                     <button
                       className={`px-4 py-1 rounded ${
-                        selectedStudent.documents?.application_status === 'rejected' ? 'bg-red-500 text-white' :
+                        selectedStudent.progress?.application_review === 'rejected' ? 'bg-red-500 text-white' :
                         'bg-gray-200 text-gray-700'
                       } font-semibold`}
-                      onClick={() => {
-                        setSelectedStudent(s => ({
-                          ...s,
-                          documents: {
-                            ...s.documents,
-                            application_status: 'rejected'
-                          }
-                        }));
+                      onClick={async () => {
+                        await updateProgress(selectedStudent.national_id, 'application_review', 'rejected');
                       }}
                     >Reject</button>
                   </div>
