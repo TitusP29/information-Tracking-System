@@ -19,67 +19,152 @@ const PDFViewer = ({ fileUrl }) => {
   );
 };
 
+const ProgressStep = ({ label, required, status, lastUpdated, onUpdate, showViewDocuments, attachments, previewDoc, setPreviewDoc }) => {
+  const statusColors = {
+    complete: 'bg-green-100 text-green-700',
+    in_progress: 'bg-yellow-100 text-yellow-700',
+    pending: 'bg-yellow-100 text-yellow-700',
+    rejected: 'bg-red-100 text-red-700'
+  };
+
+  const handlePreview = (doc) => {
+    setPreviewDoc(doc);
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h3 className="font-semibold mb-1">{label}</h3>
+          <div className="flex items-center gap-2">
+            <span className={`px-2 py-1 rounded text-xs font-semibold ${statusColors[status] || statusColors['pending']}`}>
+              {status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1)}
+            </span>
+            {lastUpdated && (
+              <span className="text-sm text-gray-600">
+                Last updated: {new Date(lastUpdated).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+        </div>
+        {onUpdate && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => onUpdate('complete')}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              Complete
+            </button>
+            <button
+              onClick={() => onUpdate('in_progress')}
+              className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
+            >
+              In Progress
+            </button>
+            <button
+              onClick={() => onUpdate('rejected')}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              Reject
+            </button>
+          </div>
+        )}
+      </div>
+      {showViewDocuments && attachments && attachments.length > 0 && (
+        <div className="mt-4">
+          <h4 className="font-semibold mb-2">Uploaded Documents</h4>
+          <div className="space-y-3">
+            {['id', 'certificate', 'residence', 'payment'].map((type) => {
+              const doc = attachments.find(a => a.document_id === type);
+              if (!doc) return null;
+              
+              return (
+                <div key={type} className="flex items-center gap-4">
+                  <span className="font-medium">{type.charAt(0).toUpperCase() + type.slice(1)}:</span>
+                  <button
+                    onClick={() => handlePreview(doc)}
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    View
+                  </button>
+                  <span className="text-gray-600">•</span>
+                  <span className="text-gray-600">{doc.file_type}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {previewDoc && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="font-semibold">Preview: {previewDoc.type.charAt(0).toUpperCase() + previewDoc.type.slice(1)}</h4>
+              <button
+                onClick={() => setPreviewDoc(null)}
+                className="text-gray-600 hover:text-gray-800"
+              >
+                Close
+              </button>
+            </div>
+            {previewDoc.file_type === 'application/pdf' ? (
+              <PDFViewer fileUrl={previewDoc.file_url} />
+            ) : previewDoc.file_type.startsWith('image/') ? (
+              <img 
+                src={previewDoc.file_url} 
+                alt={previewDoc.type} 
+                className="max-w-full max-h-[600px] object-contain"
+              />
+            ) : (
+              <div className="text-center p-4">
+                <p className="mb-2">This file type cannot be previewed directly.</p>
+                <div className="flex justify-center gap-4">
+                  <a 
+                    href={previewDoc.file_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Download File
+                  </a>
+                  <button
+                    onClick={() => handleDocumentVerification(previewDoc.type, previewDoc.user_id)}
+                    className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Verify Document
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const RegProgress = () => {
   const [students, setStudents] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
-<<<<<<< HEAD
   const [previewDoc, setPreviewDoc] = useState(null);
-=======
-  const [message, setMessage] = useState('');
-
-  const handleDocumentVerification = async (docType, userId) => {
-    if (!userId) return;
-
-    try {
-      // Map document types to their corresponding column names
-      const columnMap = {
-        'id': { uploaded: 'id_uploaded', verified: 'identitydoc' },
-        'certificate': { uploaded: 'certificate_uploaded', verified: 'academicrecord' },
-        'residence': { uploaded: 'residence_uploaded', verified: 'proofofaddress' },
-        'payment': { uploaded: 'payment_uploaded', verified: 'paymentproof' }
-      };
-
-      const columns = columnMap[docType];
-      if (!columns) return;
-
-      // Update both the uploaded and verified columns
-      const { error } = await supabase
-        .from('documents')
-        .update({
-          [columns.uploaded]: true,
-          [columns.verified]: true
-        })
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      // Refresh the student data
-      await fetchStudents();
-      setMessage('Document verified successfully');
-    } catch (error) {
-      console.error('Error verifying document:', error);
-      setMessage('Failed to verify document');
-    }
-  };
->>>>>>> a43abc8fe77e87dd131bb80650848be76c413268
 
   useEffect(() => {
     fetchStudents();
   }, []);
 
   const fetchStudents = async () => {
-    // Fetch all students with required fields from register table
     const { data, error } = await supabase
       .from('register')
       .select('*')
       .order('reg_date', { ascending: false });
+    
     if (error) {
       console.error('Error fetching students:', error);
       setStudents([]);
       return;
     }
-    // For each student, fetch their document status from documents table
+
     const studentsWithStatus = await Promise.all((data || []).map(async (student) => {
       const { data: docData, error: docError } = await supabase
         .from('documents')
@@ -95,51 +180,21 @@ const RegProgress = () => {
   };
 
   const handleViewProgress = async (student) => {
-    // Fetch all documents for this student
     const { data: docsData, error: docsError } = await supabase
       .from('documents')
-<<<<<<< HEAD
       .select('*, attachments(*)')
       .eq('user_id', student.user_id);
 
     if (docsError) {
       console.error('Error fetching documents:', docsError);
       return;
-=======
-      .select('id')
-      .eq('user_id', student.user_id)
-      .single();
-  
-    let attachments = [];
-  
-    if (doc && doc.id) {
-      const { data: attData, error: attError } = await supabase
-        .from('attachments')
-        .select('*')
-        .eq('document_id', doc.id);
-  
-      attachments = await Promise.all(
-        (attData || []).map(async (attachment) => {
-          const { data } = supabase.storage
-            .from('documents')
-            .getPublicUrl(attachment.file_path);
-
-          return {
-            ...attachment,
-            file_url: data?.publicUrl || null,
-            file_type: attachment.file_type,
-          };
-        })
-      );
->>>>>>> a43abc8fe77e87dd131bb80650848be76c413268
     }
 
-    // Process all attachments
     const allAttachments = await Promise.all(
       (docsData || []).flatMap(doc => doc.attachments || []).map(async (attachment) => {
         const { data: signedUrlData, error: signedUrlError } = await supabase.storage
           .from('documents')
-          .createSignedUrl(attachment.file_path, 60 * 60); // 1 hour expiry
+          .createSignedUrl(attachment.file_path, 60 * 60);
 
         return {
           ...attachment,
@@ -150,8 +205,49 @@ const RegProgress = () => {
       })
     );
 
-    setSelectedStudent({ ...student, attachments: allAttachments });
+    setSelectedStudent({ 
+      ...student, 
+      attachments: allAttachments,
+      documents: {
+        application_status: student.documents?.application_status || 'complete',
+        application_updated_at: student.documents?.application_updated_at || student.reg_date,
+        documents_status: student.documents?.documents_status || 'in_progress',
+        documents_updated_at: student.documents?.documents_updated_at,
+        payment_status: student.documents?.payment_status || 'pending',
+        payment_updated_at: student.documents?.payment_updated_at
+      }
+    });
     setModalOpen(true);
+  };
+
+  const handleDocumentVerification = async (docType, userId) => {
+    if (!userId) return;
+
+    try {
+      const columnMap = {
+        'id': { uploaded: 'id_uploaded', verified: 'identitydoc' },
+        'certificate': { uploaded: 'certificate_uploaded', verified: 'academicrecord' },
+        'residence': { uploaded: 'residence_uploaded', verified: 'proofofaddress' },
+        'payment': { uploaded: 'payment_uploaded', verified: 'paymentproof' }
+      };
+
+      const columns = columnMap[docType];
+      if (!columns) return;
+
+      const { error } = await supabase
+        .from('documents')
+        .update({
+          [columns.uploaded]: true,
+          [columns.verified]: true
+        })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      await fetchStudents();
+    } catch (error) {
+      console.error('Error verifying document:', error);
+    }
   };
 
   return (
@@ -191,7 +287,6 @@ const RegProgress = () => {
           </tbody>
         </table>
       </div>
-      {/* Modal placeholder - to be implemented next */}
       {modalOpen && selectedStudent && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-transparent backdrop-blur-md">
           <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-3xl relative animate-fade-in">
@@ -203,7 +298,6 @@ const RegProgress = () => {
             </button>
             <h3 className="text-2xl font-semibold mb-6">Progress Management - {selectedStudent.first_name} {selectedStudent.surname}</h3>
             <div className="space-y-6">
-              {/* Application Submitted Step */}
               <ProgressStep
                 label="Application Submitted"
                 required
@@ -214,10 +308,10 @@ const RegProgress = () => {
                   await fetchStudents();
                   setSelectedStudent(s => ({ ...s, documents: { ...s.documents, application_status: newStatus, application_updated_at: new Date().toISOString() } }));
                 }}
+                showViewDocuments={false}
                 previewDoc={previewDoc}
                 setPreviewDoc={setPreviewDoc}
               />
-              {/* Documents Uploaded Step */}
               <ProgressStep
                 label="Documents Uploaded"
                 required
@@ -237,25 +331,23 @@ const RegProgress = () => {
                       ...s, 
                       documents: { 
                         ...s.documents, 
-                        documents_status: newStatus,
-                        documents_updated_at: new Date().toISOString()
+                        documents_status: newStatus, 
+                        documents_updated_at: new Date().toISOString() 
                       } 
                     }));
                   } catch (error) {
                     console.error('Error updating documents status:', error);
                   }
                 }}
-                showViewDocuments
+                showViewDocuments={true}
                 attachments={selectedStudent.attachments || []}
                 previewDoc={previewDoc}
                 setPreviewDoc={setPreviewDoc}
               />
-
-              {/* Payment Verified Step */}
               <ProgressStep
                 label="Payment Verified"
                 required
-                status={selectedStudent.documents?.payment_status || 'in_progress'}
+                status={selectedStudent.documents?.payment_status || 'pending'}
                 lastUpdated={selectedStudent.documents?.payment_updated_at}
                 onUpdate={async (newStatus) => {
                   try {
@@ -271,327 +363,24 @@ const RegProgress = () => {
                       ...s, 
                       documents: { 
                         ...s.documents, 
-                        payment_status: newStatus,
-                        payment_updated_at: new Date().toISOString()
+                        payment_status: newStatus, 
+                        payment_updated_at: new Date().toISOString() 
                       } 
                     }));
                   } catch (error) {
                     console.error('Error updating payment status:', error);
                   }
                 }}
+                showViewDocuments={false}
                 previewDoc={previewDoc}
                 setPreviewDoc={setPreviewDoc}
               />
-
-              {/* Application Review Card */}
-              <div className="bg-white rounded-lg p-6 shadow-md">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <span className={`inline-block w-5 h-5 rounded-full ${
-                      selectedStudent.documents?.application_status === 'complete' ? 'bg-green-500 border-2 border-green-700' :
-                      selectedStudent.documents?.application_status === 'rejected' ? 'bg-red-500 border-2 border-red-700 flex items-center justify-center' :
-                      'bg-yellow-400 border-2 border-yellow-600'
-                    }`}>
-                      {selectedStudent.documents?.application_status === 'rejected' ? '✖' : ''}
-                    </span>
-                    <h4 className="text-lg font-semibold">Application Review</h4>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      className={`px-4 py-1 rounded ${
-                        selectedStudent.documents?.application_status === 'complete' ? 'bg-green-500 text-white' :
-                        'bg-gray-200 text-gray-700'
-                      } font-semibold`}
-                      onClick={() => {
-                        setSelectedStudent(s => ({
-                          ...s,
-                          documents: {
-                            ...s.documents,
-                            application_status: 'complete'
-                          }
-                        }));
-                      }}
-                    >Complete</button>
-                    <button
-                      className={`px-4 py-1 rounded ${
-                        selectedStudent.documents?.application_status === 'in_progress' ? 'bg-blue-500 text-white' :
-                        'bg-gray-200 text-gray-700'
-                      } font-semibold`}
-                      onClick={() => {
-                        setSelectedStudent(s => ({
-                          ...s,
-                          documents: {
-                            ...s.documents,
-                            application_status: 'in_progress'
-                          }
-                        }));
-                      }}
-                    >In Progress</button>
-                    <button
-                      className={`px-4 py-1 rounded ${
-                        selectedStudent.documents?.application_status === 'rejected' ? 'bg-red-500 text-white' :
-                        'bg-gray-200 text-gray-700'
-                      } font-semibold`}
-                      onClick={() => {
-                        setSelectedStudent(s => ({
-                          ...s,
-                          documents: {
-                            ...s.documents,
-                            application_status: 'rejected'
-                          }
-                        }));
-                      }}
-                    >Reject</button>
-                  </div>
-                </div>
-              </div>
             </div>
-            <button
-              className="mt-8 w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded shadow"
-              onClick={() => setModalOpen(false)}
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
     </div>
   );
 };
-
-function ProgressStep({ label, required, status, lastUpdated, onUpdate, showViewDocuments, attachments, previewDoc, setPreviewDoc }) {
-  const [showDocs, setShowDocs] = useState(false);
-  const REQUIRED_TYPES = ['id', 'certificate', 'residence', 'payment'];
-
-  let statusColor, icon, borderColor, bgColor;
-  if (status === 'complete') {
-    statusColor = 'bg-green-500';
-    icon = <span className="inline-block w-5 h-5 rounded-full bg-green-500 border-2 border-green-700"></span>;
-    borderColor = 'border-green-200';
-    bgColor = 'bg-green-50';
-  } else if (status === 'in_progress') {
-    statusColor = 'bg-yellow-400';
-    icon = <span className="inline-block w-5 h-5 rounded-full bg-yellow-400 border-2 border-yellow-600"></span>;
-    borderColor = 'border-yellow-200';
-    bgColor = 'bg-blue-50';
-  } else if (status === 'rejected') {
-    statusColor = 'bg-red-500';
-    icon = <span className="inline-block w-5 h-5 rounded-full bg-red-500 border-2 border-red-700 flex items-center justify-center">✖</span>;
-    borderColor = 'border-red-200';
-    bgColor = 'bg-red-50';
-  } else {
-    statusColor = 'bg-gray-500';
-    icon = <span className="inline-block w-5 h-5 rounded-full bg-gray-500 border-2 border-gray-700 flex items-center justify-center">-</span>;
-    borderColor = 'border-gray-200';
-    bgColor = 'bg-gray-100';
-  }
-
-  return (
-    <div className={`flex items-center justify-between p-4 rounded-lg border-2 ${borderColor} ${bgColor}`}>
-      <div className="flex items-center gap-4">
-        {icon}
-        <div>
-          <div className="font-semibold text-lg">{label} {required && <span className="text-red-500">*</span>}</div>
-          <div className="text-xs text-gray-500">Last updated: {lastUpdated ? new Date(lastUpdated).toLocaleString() : 'Not started'}</div>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <button
-          className={`px-4 py-1 rounded ${status === 'complete' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'} font-semibold`}
-          onClick={() => onUpdate('complete')}
-        >Complete</button>
-        <button
-          className={`px-4 py-1 rounded ${status === 'in_progress' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} font-semibold`}
-          onClick={() => onUpdate('in_progress')}
-        >In Progress</button>
-        {showViewDocuments ? (
-          <button
-            className={`px-4 py-1 rounded bg-cyan-700 text-white font-semibold`}
-            onClick={() => setShowDocs(v => !v)}
-          >{showDocs ? 'Hide Documents' : 'View Documents'}</button>
-        ) : (
-          <button
-            className={`px-4 py-1 rounded ${status === 'rejected' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'} font-semibold`}
-            onClick={() => onUpdate('rejected')}
-          >Reject</button>
-        )}
-      </div>
-      {showViewDocuments && showDocs && (
-        <div className="w-full mt-4 bg-gray-50 p-4 rounded shadow-inner">
-          <h4 className="font-semibold mb-2">Uploaded Documents</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {REQUIRED_TYPES.map(type => {
-              const docs = attachments.filter(a => a.type === type);
-              return (
-                <div key={type} className="p-2 border rounded bg-white flex flex-col mb-2">
-                  <span className="font-medium">{type.charAt(0).toUpperCase() + type.slice(1)}</span>
-<<<<<<< HEAD
-                  {docs.length > 0 ? (
-                    <div className="mt-2">
-                      {docs.map((doc, index) => (
-                        <button
-                          key={index}
-                          className="text-blue-600 underline block mt-1 text-left hover:bg-gray-50 px-2 py-1 rounded"
-                          onClick={() => setPreviewDoc(doc)}
-                        >
-                          View File {index + 1}
-                        </button>
-                      ))}
-=======
-                  {doc ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      <button
-                        className="text-blue-600 underline text-left"
-                        onClick={() => {
-                          setPreviewDoc(doc);
-                        }}
-                      >View File</button>
-                      <button
-                        onClick={() => handleDocumentVerification(type, doc.user_id)}
-                        className="inline-flex items-center px-2 py-1 bg-emerald-500 text-white text-xs font-semibold rounded hover:bg-emerald-600 transition-colors"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        Verify
-                      </button>
->>>>>>> a43abc8fe77e87dd131bb80650848be76c413268
-                    </div>
-                  ) : (
-                    <span className="text-red-500 text-xs mt-1">Not Uploaded</span>
-                  )}
-                </div>
-              );
-            })}
-            {/* Preview Area */}
-<<<<<<< HEAD
-             {previewDoc && (
-               <div className="fixed inset-0 bg-white z-50 flex flex-col">
-                 <div className="flex justify-between items-center p-4 border-b border-gray-200">
-                   <div className="flex items-center gap-2">
-                     <span className="text-xl font-semibold">Preview: {previewDoc.type.charAt(0).toUpperCase() + previewDoc.type.slice(1)}</span>
-                     <span className="text-gray-500">{previewDoc.file_type}</span>
-                   </div>
-                   <button 
-                     className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200"
-                     onClick={() => setPreviewDoc(null)}
-                   >
-                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block" viewBox="0 0 20 20" fill="currentColor">
-                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                     </svg>
-                     <span className="ml-1">Close</span>
-                   </button>
-                 </div>
-                 <div className="flex-1 overflow-auto">
-                   {previewDoc.file_type === 'application/pdf' ? (
-                     <div className="w-full h-full">
-                       <PDFViewer fileUrl={previewDoc.file_url} />
-                     </div>
-                   ) : previewDoc.file_type.startsWith('image/') ? (
-                     <div className="w-full h-full flex items-center justify-center">
-                       <img 
-                         src={previewDoc.file_url} 
-                         alt={previewDoc.type} 
-                         className="max-w-full max-h-full object-contain"
-                       />
-                     </div>
-                   ) : (
-                     <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                       <a 
-                         href={previewDoc.file_url} 
-                         target="_blank" 
-                         rel="noopener noreferrer" 
-                         className="text-blue-600 hover:text-blue-700 font-medium transition-colors duration-200 flex items-center gap-2"
-                       >
-                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                         </svg>
-                         Download File
-                       </a>
-                     </div>
-                   )}
-                 </div>
-               </div>
-             )}
-           </div>
-         </div>
-       )}
-     </div>
-=======
-            {previewDoc && (
-              <div className="col-span-2 mt-4 p-4 border rounded bg-white">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-semibold">Preview: {previewDoc.type.charAt(0).toUpperCase() + previewDoc.type.slice(1)}</span>
-                  <button className="text-red-600 font-bold" onClick={() => setPreviewDoc(null)}>Close</button>
-                </div>
-                {message && (
-                  <div className="mb-4 p-3 rounded bg-green-50 text-green-700">
-                    {message}
-                  </div>
-                )}
-                {previewDoc.file_type === 'application/pdf' ? (
-                  <div className="text-center p-8">
-                    <p className="mb-4 text-gray-600">Click the button below to view the PDF in a new tab</p>
-                    <div className="flex justify-center gap-4">
-                      <a 
-                        href={previewDoc.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        View PDF Document
-                      </a>
-                      <button
-                        onClick={() => handleDocumentVerification(previewDoc.type, previewDoc.user_id)}
-                        className="inline-flex items-center px-6 py-3 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 transition-colors"
-                      >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        Verify Document
-                      </button>
-                    </div>
-                  </div>
-                ) : previewDoc.file_type.startsWith('image/') ? (
-                  <div className="text-center">
-                    <img src={previewDoc.file_url} alt={previewDoc.type} className="max-h-96 w-auto mx-auto mb-4" />
-                    <button
-                      onClick={() => handleDocumentVerification(previewDoc.type, previewDoc.user_id)}
-                      className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      Verify Document
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-center p-4">
-                    <p className="mb-2">This file type cannot be previewed directly.</p>
-                    <div className="flex justify-center gap-4">
-                      <a 
-                        href={previewDoc.file_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="text-blue-600 hover:text-blue-800 underline"
-                      >
-                        Download File
-                      </a>
-                      <button
-                        onClick={() => handleDocumentVerification(previewDoc.type, previewDoc.user_id)}
-                        className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        Verify Document
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-    </div>
->>>>>>> a43abc8fe77e87dd131bb80650848be76c413268
-  );
-}
 
 export default RegProgress;
