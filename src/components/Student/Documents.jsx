@@ -4,6 +4,8 @@ import { Button } from '../ui/button';
 import { supabase } from '../../../supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 
 const REQUIRED_DOCUMENTS = [
   { id: 'id', label: 'ID Document' },
@@ -69,15 +71,17 @@ function Documents() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validation
-    const allowedTypes = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
-    const extension = '.' + file.name.split('.').pop().toLowerCase();
-    if (!allowedTypes.includes(extension)) {
-      setMessage('Invalid file type. Allowed types: PDF, DOC, DOCX, JPG, PNG');
+    // Only allow PDF files
+    if (file.type !== 'application/pdf') {
+      toast.error('Only PDF files are allowed. Please upload a PDF document.');
+      e.target.value = ''; // Clear the file input
       return;
     }
+
+    // Size validation
     if (file.size > 5 * 1024 * 1024) {
-      setMessage('File too large. Maximum size: 5MB');
+      toast.error('File too large. Maximum size: 5MB');
+      e.target.value = ''; // Clear the file input
       return;
     }
 
@@ -234,6 +238,16 @@ function Documents() {
 
   return (
     <div className="p-4 max-w-5xl mx-auto">
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#333',
+            color: '#fff',
+          },
+        }}
+      />
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Upload Application Documents</h1>
         
@@ -305,7 +319,7 @@ function Documents() {
                           ref={el => fileInputRefs.current[doc.id] = el}
                           className="hidden"
                           onChange={(e) => handleFileChange(e, doc.id)}
-                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          accept=".pdf"
                           disabled={uploading}
                         />
                         <Button
