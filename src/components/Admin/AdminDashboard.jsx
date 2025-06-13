@@ -1,14 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Bell, UserCheck, Settings, LogOut, RefreshCw, CalendarCheck2, ClipboardList, Users } from 'lucide-react';
+import { Bell, UserCheck, Settings, LogOut, RefreshCw, CalendarCheck2, ClipboardList, Users, UserX, Clock } from 'lucide-react';
 import Notifications from './Notifications';
 import RegProgress from './RegProgress';
 import ViewReg from './ViewReg';
 import ManageCourse from './ManageCourse';
 import ManageStudent from './ManageStudent';
-import { useState } from 'react';
+import { supabase } from '../../../supabaseClient';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -20,6 +20,13 @@ export default function AdminDashboard() {
     darkMode: false,
     emailNotifications: true
   });
+  const [stats, setStats] = useState({
+    total: 0,
+    approved: 0,
+    inProgress: 0,
+    rejected: 0
+  });
+  const [loading, setLoading] = useState(true);
 
   const handleSettingsChange = (key) => {
     setSettings(prev => ({
@@ -70,6 +77,56 @@ export default function AdminDashboard() {
     // Add token/session clearing here if needed in the future
     navigate('/');
   };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch all registrations with their progress
+      const { data: registrations, error } = await supabase
+        .from('register')
+        .select('*, progress_management(*)');
+
+      if (error) throw error;
+
+      // Calculate statistics
+      const stats = {
+        total: registrations.length,
+        approved: registrations.filter(r => r.progress_management?.application_review === 'approved').length,
+        inProgress: registrations.filter(r => r.progress_management?.application_review === 'in_progress').length,
+        rejected: registrations.filter(r => r.progress_management?.application_review === 'rejected').length
+      };
+
+      setStats(stats);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <h2 className="text-2xl font-bold mb-4">Admin Dashboard</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-4 flex flex-col items-center justify-center">
+                <div className="w-8 h-8 bg-gray-200 rounded-full mb-2" />
+                <div className="w-24 h-4 bg-gray-200 rounded mb-2" />
+                <div className="w-8 h-6 bg-gray-200 rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -187,28 +244,28 @@ export default function AdminDashboard() {
           <CardContent className="p-4 flex flex-col items-center justify-center">
             <Users size={32} />
             <p className="text-lg font-semibold">Total Registrations</p>
-            <p className="text-2xl font-bold">5</p>
+            <p className="text-2xl font-bold">{stats.total}</p>
           </CardContent>
         </Card>
         <Card className="bg-green-500 text-white">
           <CardContent className="p-4 flex flex-col items-center justify-center">
             <UserCheck size={32} />
             <p className="text-lg font-semibold">Approved</p>
-            <p className="text-2xl font-bold">3</p>
+            <p className="text-2xl font-bold">{stats.approved}</p>
           </CardContent>
         </Card>
         <Card className="bg-yellow-400 text-white">
           <CardContent className="p-4 flex flex-col items-center justify-center">
-            <UserCheck size={32} />
-            <p className="text-lg font-semibold">Pre-Approved</p>
-            <p className="text-2xl font-bold">2</p>
+            <Clock size={32} />
+            <p className="text-lg font-semibold">In Progress</p>
+            <p className="text-2xl font-bold">{stats.inProgress}</p>
           </CardContent>
         </Card>
         <Card className="bg-red-500 text-white">
           <CardContent className="p-4 flex flex-col items-center justify-center">
-            <UserCheck size={32} />
+            <UserX size={32} />
             <p className="text-lg font-semibold">Rejected</p>
-            <p className="text-2xl font-bold">0</p>
+            <p className="text-2xl font-bold">{stats.rejected}</p>
           </CardContent>
         </Card>
       </div>
