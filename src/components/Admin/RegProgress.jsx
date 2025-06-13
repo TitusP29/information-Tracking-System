@@ -4,6 +4,7 @@ import { Viewer, Worker } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
+import { toast, Toaster } from 'react-hot-toast';
 
 const PDFViewer = ({ fileUrl }) => {
   const defaultLayoutPluginInstance = defaultLayoutPlugin();
@@ -88,6 +89,15 @@ const RegProgress = () => {
 
   const updateProgress = async (studentNumber, field, status) => {
     try {
+      // Define valid statuses based on the field
+      const validStatuses = field === 'application_review' 
+        ? ['pending', 'in_progress', 'approved', 'rejected']
+        : ['pending', 'in_progress', 'complete', 'rejected'];
+
+      if (!validStatuses.includes(status)) {
+        throw new Error(`Invalid status: ${status}. For ${field}, must be one of: ${validStatuses.join(', ')}`);
+      }
+
       const { data, error } = await supabase
         .from('progress_management')
         .update({ [field]: status })
@@ -158,6 +168,16 @@ const RegProgress = () => {
 
   return (
     <div className="p-6">
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#333',
+            color: '#fff',
+          },
+        }}
+      />
       <h2 className="text-2xl font-bold mb-4">Registration Progress Management</h2>
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow">
@@ -179,11 +199,11 @@ const RegProgress = () => {
                 <td className="px-6 py-3 border-b whitespace-nowrap text-sm text-gray-700 align-middle">{student.course}</td>
                 <td className="px-6 py-3 border-b whitespace-nowrap text-sm align-middle">
                   <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                    student.progress?.application_review === 'complete' ? 'bg-green-100 text-green-700' : 
+                    student.progress?.application_review === 'approved' ? 'bg-green-100 text-green-700' : 
                     student.progress?.application_review === 'rejected' ? 'bg-red-100 text-red-700' :
                     'bg-yellow-100 text-yellow-700'
                   }`}>
-                    {student.progress?.application_review === 'complete' ? 'Approved' : 
+                    {student.progress?.application_review === 'approved' ? 'Approved' : 
                      student.progress?.application_review === 'rejected' ? 'Rejected' : 'Pending'}
                   </span>
                 </td>
@@ -256,7 +276,7 @@ const RegProgress = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <span className={`inline-block w-5 h-5 rounded-full ${
-                      selectedStudent.progress?.application_review === 'complete' ? 'bg-green-500 border-2 border-green-700' :
+                      selectedStudent.progress?.application_review === 'approved' ? 'bg-green-500 border-2 border-green-700' :
                       selectedStudent.progress?.application_review === 'rejected' ? 'bg-red-500 border-2 border-red-700 flex items-center justify-center' :
                       'bg-yellow-400 border-2 border-yellow-600'
                     }`}>
@@ -267,11 +287,31 @@ const RegProgress = () => {
                   <div className="flex gap-2">
                     <button
                       className={`px-4 py-1 rounded ${
-                        selectedStudent.progress?.application_review === 'complete' ? 'bg-green-500 text-white' :
+                        selectedStudent.progress?.application_review === 'approved' ? 'bg-green-500 text-white' :
                         'bg-gray-200 text-gray-700'
                       } font-semibold`}
                       onClick={async () => {
-                        await updateProgress(selectedStudent.national_id, 'application_review', 'complete');
+                        // Check if all other fields are complete
+                        const progress = selectedStudent.progress;
+                        const incompleteFields = [];
+                        
+                        if (progress.application_submitted !== 'complete') {
+                          incompleteFields.push('Application Submission');
+                        }
+                        if (progress.document_uploaded !== 'complete') {
+                          incompleteFields.push('Document Upload');
+                        }
+                        if (progress.payment_verified !== 'complete') {
+                          incompleteFields.push('Payment Verification');
+                        }
+
+                        if (incompleteFields.length > 0) {
+                          toast.error(`Cannot approve application. The following fields are not complete: ${incompleteFields.join(', ')}`);
+                          return;
+                        }
+
+                        await updateProgress(selectedStudent.national_id, 'application_review', 'approved');
+                        toast.success('Application approved successfully!');
                       }}
                     >Approve</button>
                     <button
@@ -281,6 +321,7 @@ const RegProgress = () => {
                       } font-semibold`}
                       onClick={async () => {
                         await updateProgress(selectedStudent.national_id, 'application_review', 'in_progress');
+                        toast.success('Application status updated to In Progress');
                       }}
                     >In Progress</button>
                     <button
@@ -290,6 +331,7 @@ const RegProgress = () => {
                       } font-semibold`}
                       onClick={async () => {
                         await updateProgress(selectedStudent.national_id, 'application_review', 'rejected');
+                        toast.success('Application rejected');
                       }}
                     >Reject</button>
                   </div>
@@ -305,6 +347,28 @@ const RegProgress = () => {
           </div>
         </div>
       )}
+      {previewDoc && (
+        <div className="fixed inset-0 bg-white z-50 flex flex-col">
+          <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-semibold">Preview: {previewDoc.type.charAt(0).toUpperCase() + previewDoc.type.slice(1)}</span>
+              <span className="text-gray-500">{previewDoc.file_type}</span>
+            </div>
+            <button 
+              className="text-gray-600 hover:text-gray-800 font-medium transition-colors duration-200 flex items-center gap-2"
+              onClick={() => setPreviewDoc(null)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              Close Preview
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <PDFViewer fileUrl={previewDoc.file_url} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -314,7 +378,7 @@ function ProgressStep({ label, required, status, lastUpdated, onUpdate, showView
   const REQUIRED_TYPES = ['id', 'certificate', 'residence', 'payment'];
 
   let statusColor, icon, borderColor, bgColor;
-  if (status === 'complete') {
+  if (status === 'approved') {
     statusColor = 'bg-green-500';
     icon = <span className="inline-block w-5 h-5 rounded-full bg-green-500 border-2 border-green-700"></span>;
     borderColor = 'border-green-200';
@@ -336,6 +400,14 @@ function ProgressStep({ label, required, status, lastUpdated, onUpdate, showView
     bgColor = 'bg-gray-100';
   }
 
+  const handleViewFile = (doc) => {
+    if (doc.file_type === 'application/pdf') {
+      setPreviewDoc(doc);
+    } else {
+      toast.error('This file is not a PDF. Only PDF files can be previewed.');
+    }
+  };
+
   return (
     <div className={`flex items-center justify-between p-4 rounded-lg border-2 ${borderColor} ${bgColor}`}>
       <div className="flex items-center gap-4">
@@ -347,8 +419,8 @@ function ProgressStep({ label, required, status, lastUpdated, onUpdate, showView
       </div>
       <div className="flex flex-wrap gap-2">
         <button
-          className={`px-4 py-1 rounded ${status === 'complete' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'} font-semibold`}
-          onClick={() => onUpdate('complete')}
+          className={`px-4 py-1 rounded ${status === 'approved' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'} font-semibold`}
+          onClick={() => onUpdate('approved')}
         >Complete</button>
         <button
           className={`px-4 py-1 rounded ${status === 'in_progress' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} font-semibold`}
@@ -368,84 +440,44 @@ function ProgressStep({ label, required, status, lastUpdated, onUpdate, showView
       </div>
       {showViewDocuments && showDocs && (
         <div className="w-full mt-4 bg-gray-50 p-4 rounded shadow-inner">
-          <h4 className="font-semibold mb-2">Uploaded Documents</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <h4 className="font-semibold mb-4">Uploaded Documents</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {REQUIRED_TYPES.map(type => {
               const docs = attachments.filter(a => a.type === type);
               return (
-                <div key={type} className="p-2 border rounded bg-white flex flex-col mb-2">
-                  <span className="font-medium">{type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                <div key={type} className="p-4 border rounded-lg bg-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-gray-700">{type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                    <span className="text-sm text-gray-500">{docs.length} file(s)</span>
+                  </div>
                   {docs.length > 0 ? (
-                    <div className="mt-2">
+                    <div className="space-y-2">
                       {docs.map((doc, index) => (
-                        <button
-                          key={index}
-                          className="text-blue-600 underline block mt-1 text-left hover:bg-gray-50 px-2 py-1 rounded"
-                          onClick={() => setPreviewDoc(doc)}
-                        >
-                          View File {index + 1}
-                        </button>
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                          <span className="text-sm text-gray-600">File {index + 1}</span>
+                          <button
+                            className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1"
+                            onClick={() => handleViewFile(doc)}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                            </svg>
+                            View
+                          </button>
+                        </div>
                       ))}
                     </div>
                   ) : (
-                    <span className="text-red-500 text-xs mt-1">Not Uploaded</span>
+                    <span className="text-red-500 text-sm">Not Uploaded</span>
                   )}
                 </div>
               );
             })}
-            {/* Preview Area */}
-             {previewDoc && (
-               <div className="fixed inset-0 bg-white z-50 flex flex-col">
-                 <div className="flex justify-between items-center p-4 border-b border-gray-200">
-                   <div className="flex items-center gap-2">
-                     <span className="text-xl font-semibold">Preview: {previewDoc.type.charAt(0).toUpperCase() + previewDoc.type.slice(1)}</span>
-                     <span className="text-gray-500">{previewDoc.file_type}</span>
-                   </div>
-                   <button 
-                     className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200"
-                     onClick={() => setPreviewDoc(null)}
-                   >
-                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block" viewBox="0 0 20 20" fill="currentColor">
-                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                     </svg>
-                     <span className="ml-1">Close</span>
-                   </button>
-                 </div>
-                 <div className="flex-1 overflow-auto">
-                   {previewDoc.file_type === 'application/pdf' ? (
-                     <div className="w-full h-full">
-                       <PDFViewer fileUrl={previewDoc.file_url} />
-                     </div>
-                   ) : previewDoc.file_type.startsWith('image/') ? (
-                     <div className="w-full h-full flex items-center justify-center">
-                       <img 
-                         src={previewDoc.file_url} 
-                         alt={previewDoc.type} 
-                         className="max-w-full max-h-full object-contain"
-                       />
-                     </div>
-                   ) : (
-                     <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                       <a 
-                         href={previewDoc.file_url} 
-                         target="_blank" 
-                         rel="noopener noreferrer" 
-                         className="text-blue-600 hover:text-blue-700 font-medium transition-colors duration-200 flex items-center gap-2"
-                       >
-                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                         </svg>
-                         Download File
-                       </a>
-                     </div>
-                   )}
-                 </div>
-               </div>
-             )}
-           </div>
-         </div>
-       )}
-     </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
