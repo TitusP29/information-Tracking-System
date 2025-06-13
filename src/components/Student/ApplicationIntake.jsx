@@ -1,36 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import { FaSignOutAlt } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../supabaseClient'
+import { supabase } from '../../../supabaseClient';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ApplicationIntake = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showCourseDetails, setShowCourseDetails] = useState(false);
-
+  const [studentApplications, setStudentApplications] = useState({});
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('name, duration,status, mode, description'); // Select the fields you need
+    const fetchData = async () => {
+      try {
+        // Fetch courses
+        const { data: coursesData, error: coursesError } = await supabase
+          .from('courses')
+          .select('name, duration, status, mode, description');
 
-      if (error) {
-        console.error('Error fetching courses:', error);
-        // Optionally set an error state to display to the user
-      } else {
-        setCourses(data);
+        if (coursesError) throw coursesError;
+        setCourses(coursesData);
+
+        // If user is logged in, fetch their applications
+        if (user?.id) {
+          const { data: registerData, error: registerError } = await supabase
+            .from('register')
+            .select('course, national_id')
+            .eq('user_id', user.id);
+
+          if (registerError) throw registerError;
+
+          if (registerData && registerData.length > 0) {
+            // For each registration, fetch the progress
+            const applications = {};
+            for (const registration of registerData) {
+              const { data: progressData, error: progressError } = await supabase
+                .from('progress_management')
+                .select('application_review')
+                .eq('student_number', registration.national_id)
+                .single();
+
+              if (progressError) throw progressError;
+
+              applications[registration.course] = {
+                status: progressData?.application_review || 'pending'
+              };
+            }
+            setStudentApplications(applications);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    fetchCourses();
-  }, []); // Empty dependency array means this effect runs once on mount
+    fetchData();
+  }, [user]);
 
   const handleApply = (courseName) => {
-    // Navigate to the registration page, maybe pass course info as state
     navigate('/register', { state: { courseName } });
   };
 
@@ -42,6 +74,48 @@ const ApplicationIntake = () => {
   const handleCloseDetails = () => {
     setShowCourseDetails(false);
     setSelectedCourse(null);
+  };
+
+  const getButtonState = (course) => {
+    // If course is closed, show disabled button
+    if (course.status !== 'Open') {
+      return {
+        text: 'Applications Closed',
+        disabled: true,
+        className: 'w-full bg-gray-400 text-white font-bold py-2 px-4 rounded cursor-not-allowed opacity-50'
+      };
+    }
+
+    // Check if student has applied for this course
+    const application = studentApplications[course.name];
+    if (application) {
+      if (application.status === 'complete') {
+        return {
+          text: 'Enrolled',
+          disabled: true,
+          className: 'w-full bg-green-600 text-white font-bold py-2 px-4 rounded cursor-not-allowed'
+        };
+      } else if (application.status === 'rejected') {
+        return {
+          text: 'Application Rejected',
+          disabled: true,
+          className: 'w-full bg-red-600 text-white font-bold py-2 px-4 rounded cursor-not-allowed'
+        };
+      } else {
+        return {
+          text: 'Application in Progress',
+          disabled: true,
+          className: 'w-full bg-yellow-500 text-white font-bold py-2 px-4 rounded cursor-not-allowed'
+        };
+      }
+    }
+
+    // If no application exists, show apply button
+    return {
+      text: 'Apply Now',
+      disabled: false,
+      className: 'w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out'
+    };
   };
 
   if (loading) {
@@ -64,41 +138,36 @@ const ApplicationIntake = () => {
 
       {/* Course Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {courses.map(course => (
-          <div key={course.name} className="bg-white p-6 rounded-lg shadow-md flex flex-col justify-between">
-            <div>
-              <h3 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-2">{course.name}</h3>
-              <div className="flex justify-end -mt-8 mb-4">
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  course.status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {course.status}
-                </span>
+        {courses.map(course => {
+          const buttonState = getButtonState(course);
+          return (
+            <div key={course.name} className="bg-white p-6 rounded-lg shadow-md flex flex-col justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-2">{course.name}</h3>
+                <div className="flex justify-end -mt-8 mb-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    course.status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {course.status}
+                  </span>
+                </div>
+                <p className="text-gray-600 text-sm mb-1"><span className="font-semibold">Duration:</span> {course.duration}</p>
+                <p className="text-gray-600 text-sm mb-1"><span className="font-semibold">Mode:</span> {course.mode}</p>
+                <p className="text-gray-600 text-sm mb-4"><span className="font-semibold">Description:</span> {course.description}</p>
               </div>
-              <p className="text-gray-600 text-sm mb-1"><span className="font-semibold">Duration:</span> {course.duration}</p>
-              <p className="text-gray-600 text-sm mb-1"><span className="font-semibold">Mode:</span> {course.mode}</p>
-              <p className="text-gray-600 text-sm mb-4"><span className="font-semibold">Description:</span> {course.description}</p>
-            </div>
-            
-            <div className="mt-auto">
-              {course.status === 'Open' ? (
+              
+              <div className="mt-auto">
                 <button
-                  onClick={() => handleApply(course.name)}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
+                  onClick={() => !buttonState.disabled && handleApply(course.name)}
+                  disabled={buttonState.disabled}
+                  className={buttonState.className}
                 >
-                  Apply Now
+                  {buttonState.text}
                 </button>
-              ) : (
-                <button
-                  disabled
-                  className="w-full bg-gray-400 text-white font-bold py-2 px-4 rounded cursor-not-allowed opacity-50"
-                >
-                  Applications Closed
-                </button>
-              )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Course Details Modal */}
