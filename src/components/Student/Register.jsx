@@ -96,6 +96,25 @@ const RegistrationForm = () => {
         console.error('Supabase registration error:', regError);
         throw regError;
       }
+
+      // Add student to progress_management table
+      const progressManagementData = {
+        student_number: formData.national_id,
+        application_submitted: 'pending',
+        document_uploaded: 'pending',
+        payment_verified: 'pending',
+        application_review: 'pending'
+      };
+
+      const { error: progressError } = await supabase
+        .from('progress_management')
+        .insert([progressManagementData]);
+
+      if (progressError) {
+        console.error('Progress management insert error:', progressError);
+        throw progressError;
+      }
+
       setSuccess('Registration submitted successfully!');
       // Optionally reset form or redirect
     } catch (err) {
