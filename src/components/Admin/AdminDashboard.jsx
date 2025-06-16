@@ -14,11 +14,18 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] = useState({
-    notifications: true,
-    autoRefresh: false,
-    darkMode: false,
-    emailNotifications: true
+  const [settings, setSettings] = useState(() => {
+    const savedSettings = localStorage.getItem('adminSettings');
+    return savedSettings ? JSON.parse(savedSettings) : {
+      notifications: true,
+      autoRefresh: false,
+      darkMode: false,
+      emailNotifications: true,
+      soundNotifications: true,
+      compactMode: false,
+      theme: 'system',
+      language: 'en'
+    };
   });
   const [stats, setStats] = useState({
     total: 0,
@@ -28,11 +35,58 @@ export default function AdminDashboard() {
   });
   const [loading, setLoading] = useState(true);
 
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('adminSettings', JSON.stringify(settings));
+    
+    // Apply theme changes
+    if (settings.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
+    // Apply compact mode
+    if (settings.compactMode) {
+      document.body.classList.add('compact-mode');
+    } else {
+      document.body.classList.remove('compact-mode');
+    }
+  }, [settings]);
+
   const handleSettingsChange = (key) => {
     setSettings(prev => ({
       ...prev,
       [key]: !prev[key]
     }));
+  };
+
+  const handleThemeChange = (theme) => {
+    setSettings(prev => ({
+      ...prev,
+      theme
+    }));
+  };
+
+  const handleLanguageChange = (language) => {
+    setSettings(prev => ({
+      ...prev,
+      language
+    }));
+  };
+
+  const handleResetSettings = () => {
+    const defaultSettings = {
+      notifications: true,
+      autoRefresh: false,
+      darkMode: false,
+      emailNotifications: true,
+      soundNotifications: true,
+      compactMode: false,
+      theme: 'system',
+      language: 'en'
+    };
+    setSettings(defaultSettings);
   };
 
   const handleRefreshData = () => {
@@ -129,7 +183,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={`p-6 space-y-6 ${settings.darkMode ? 'dark bg-gray-900 text-white' : 'bg-gray-50'}`}>
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Users className="text-blue-600" /> Admin Dashboard
@@ -149,20 +203,30 @@ export default function AdminDashboard() {
 
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 w-full max-w-sm relative transform transition-all duration-300 ease-in-out ${settings.darkMode ? 'text-white' : 'text-gray-900'}`}>
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl"
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 text-xl"
               onClick={() => setShowSettings(false)}
             >
               &times;
             </button>
-            <h2 className="text-2xl font-bold mb-4">Settings</h2>
-            <div className="space-y-4">
+            <h2 className="text-xl font-bold mb-3">Settings</h2>
+
+            {/* Profile Section */}
+            <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded">
+              <div className="w-12 h-12 rounded-full bg-blue-200 dark:bg-blue-600 flex items-center justify-center text-xl font-bold text-blue-700 dark:text-blue-200">A</div>
+              <div>
+                <div className="font-semibold">Admin User</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">admin@email.com</div>
+              </div>
+            </div>
+
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold">In-App Notifications</h3>
-                  <p className="text-sm text-gray-500">Receive notifications within the application</p>
+                  <h3 className="font-semibold text-sm">In-App Notifications</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Receive notifications within the application</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -171,14 +235,30 @@ export default function AdminDashboard() {
                     checked={settings.notifications}
                     onChange={() => handleSettingsChange('notifications')}
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                 </label>
               </div>
 
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold">Auto Refresh</h3>
-                  <p className="text-sm text-gray-500">Automatically refresh data periodically</p>
+                  <h3 className="font-semibold text-sm">Sound Notifications</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Play a sound for new notifications</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={settings.soundNotifications}
+                    onChange={() => handleSettingsChange('soundNotifications')}
+                  />
+                  <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-sm">Auto Refresh</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Automatically refresh data periodically</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -187,14 +267,30 @@ export default function AdminDashboard() {
                     checked={settings.autoRefresh}
                     onChange={() => handleSettingsChange('autoRefresh')}
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                 </label>
               </div>
 
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold">Dark Mode</h3>
-                  <p className="text-sm text-gray-500">Switch to dark theme</p>
+                  <h3 className="font-semibold text-sm">Compact Mode</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Reduce spacing for a denser UI</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={settings.compactMode}
+                    onChange={() => handleSettingsChange('compactMode')}
+                  />
+                  <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-sm">Dark Mode</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Switch to dark theme</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -203,14 +299,48 @@ export default function AdminDashboard() {
                     checked={settings.darkMode}
                     onChange={() => handleSettingsChange('darkMode')}
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                 </label>
               </div>
 
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold">Email Notifications</h3>
-                  <p className="text-sm text-gray-500">Receive notifications via email</p>
+                  <h3 className="font-semibold text-sm">Color Theme</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Choose your preferred color theme</p>
+                </div>
+                <select 
+                  className="border rounded p-1 text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  value={settings.theme}
+                  onChange={(e) => handleThemeChange(e.target.value)}
+                >
+                  <option value="system">System</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                  <option value="blue">Blue</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-sm">Language</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Select your preferred language</p>
+                </div>
+                <select 
+                  className="border rounded p-1 text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  value={settings.language}
+                  onChange={(e) => handleLanguageChange(e.target.value)}
+                >
+                  <option value="en">English</option>
+                  <option value="fr">French</option>
+                  <option value="es">Spanish</option>
+                  <option value="sw">Swahili</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-sm">Email Notifications</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Receive notifications via email</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -219,21 +349,24 @@ export default function AdminDashboard() {
                     checked={settings.emailNotifications}
                     onChange={() => handleSettingsChange('emailNotifications')}
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                 </label>
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowSettings(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => {
-                // Save settings logic here
-                setShowSettings(false);
-              }}>
-                Save Changes
-              </Button>
+            <div className="mt-4 flex flex-col gap-2">
+              <button 
+                className="w-full py-1.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-semibold transition-colors text-sm"
+                onClick={() => {/* Implement change password functionality */}}
+              >
+                Change Password
+              </button>
+              <button 
+                className="w-full py-1.5 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-semibold transition-colors text-sm"
+                onClick={handleResetSettings}
+              >
+                Reset to Default
+              </button>
             </div>
           </div>
         </div>
