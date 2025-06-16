@@ -45,7 +45,6 @@ const ViewReg = () => {
               <th className="py-2 px-4 border-b">Name</th>
               <th className="py-2 px-4 border-b">Course</th>
               <th className="py-2 px-4 border-b">Registration Date</th>
-              <th className="py-2 px-4 border-b">Application Status</th>
               <th className="py-2 px-4 border-b">Action</th>
             </tr>
           </thead>
@@ -55,9 +54,6 @@ const ViewReg = () => {
                 <td className="px-9 py-2 border-b whitespace-nowrap text-sm font-medium text-gray-900 align-middle">{student.first_name}</td>
                 <td className="px-9 py-2 border-b whitespace-nowrap text-sm text-gray-700 align-middle">{student.course || student.course_name}</td>
                 <td className="px-9 py-2 border-b whitespace-nowrap text-sm text-gray-700 align-middle">{student.reg_date ? new Date(student.reg_date).toLocaleDateString() : ''}</td>
-                <td className="px-9 py-2 border-b whitespace-nowrap text-sm align-middle">
-                  <span className={`px-2 py-1 rounded text-xs font-semibold ${student.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{student.status || 'pending'}</span>
-                </td>
                 <td className="px-6 py-3 border-b whitespace-nowrap text-center align-middle">
                   <button onClick={() => handleView(student)} className="text-blue-600 hover:text-blue-800">
                     <FaEye size={18} />
@@ -89,16 +85,6 @@ const ViewReg = () => {
                   </div>
                 ))}
             </div>
-            <button
-              className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded shadow"
-              onClick={async () => {
-                await supabase.from('register').update({ status: 'approved' }).eq('id', selectedStudent.id);
-                setStudents(students => students.map(s => s.id === selectedStudent.id ? { ...s, status: 'approved' } : s));
-                setModalOpen(false);
-              }}
-            >
-              Approve Application
-            </button>
           </div>
         </div>
       )}
