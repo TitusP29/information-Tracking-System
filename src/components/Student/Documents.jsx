@@ -285,9 +285,9 @@ function Documents() {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       getDocumentStatus(doc.id) 
                         ? 'bg-emerald-100 text-emerald-800' 
-                        : 'bg-gray-100 text-gray-800'
+                        : ''
                     }`}>
-                      {getDocumentStatus(doc.id) ? 'UPLOADED' : 'MISSING'}
+                      {getDocumentStatus(doc.id) ? 'UPLOADED' : ''}
                     </span>
                   </div>
                   
