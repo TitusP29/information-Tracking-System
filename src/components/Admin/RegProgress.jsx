@@ -378,7 +378,7 @@ function ProgressStep({ label, required, status, lastUpdated, onUpdate, showView
   const REQUIRED_TYPES = ['id', 'certificate', 'residence', 'payment'];
 
   let statusColor, icon, borderColor, bgColor;
-  if (status === 'approved') {
+  if (status === 'complete' || status === 'approved') {
     statusColor = 'bg-green-500';
     icon = <span className="inline-block w-5 h-5 rounded-full bg-green-500 border-2 border-green-700"></span>;
     borderColor = 'border-green-200';
@@ -419,8 +419,8 @@ function ProgressStep({ label, required, status, lastUpdated, onUpdate, showView
       </div>
       <div className="flex flex-wrap gap-2">
         <button
-          className={`px-4 py-1 rounded ${status === 'approved' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'} font-semibold`}
-          onClick={() => onUpdate('approved')}
+          className={`px-4 py-1 rounded ${status === 'complete' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'} font-semibold`}
+          onClick={() => onUpdate('complete')}
         >Complete</button>
         <button
           className={`px-4 py-1 rounded ${status === 'in_progress' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} font-semibold`}
