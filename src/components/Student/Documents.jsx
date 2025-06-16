@@ -117,16 +117,33 @@ function Documents() {
   
       if (uploadError) throw uploadError;
   
-      const { data: docData, error: docError } = await supabase
+      // Get or create document record
+      let docData;
+      const { data: existingDoc, error: fetchError } = await supabase
         .from('documents')
-        .upsert({
-          user_id: user.id,
-          status: 'UPLOADED'
-        })
-        .select()
+        .select('*')
+        .eq('user_id', user.id)
         .single();
-  
-      if (docError) throw docError;
+
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+        throw fetchError;
+      }
+
+      if (existingDoc) {
+        docData = existingDoc;
+      } else {
+        const { data: newDoc, error: createError } = await supabase
+          .from('documents')
+          .insert({
+            user_id: user.id,
+            status: 'UPLOADED'
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        docData = newDoc;
+      }
   
       const { error: attachError } = await supabase
         .from('attachments')
@@ -169,21 +186,53 @@ function Documents() {
             .from('documents')
             .update({ status: 'approved' })
             .eq('id', docData.id);
+
+          // Create a notification for the student
+          await supabase
+            .from('notifications')
+            .insert({
+              type: 'success',
+              title: 'Documents Complete',
+              message: 'All required documents have been uploaded successfully.',
+              recipient_id: user.id,
+              read: false
+            });
+        } else {
+          // Create a notification for the specific document upload
+          await supabase
+            .from('notifications')
+            .insert({
+              type: 'info',
+              title: 'Document Uploaded',
+              message: `${getDocumentLabel(docType)} has been uploaded successfully.`,
+              recipient_id: user.id,
+              read: false
+            });
         }
       }
   
       setMessage('Document uploaded successfully');
       fetchUserDocuments();
+      toast.success('Document uploaded successfully');
     } catch (error) {
       console.error('Error uploading document:', error);
       setMessage('Failed to upload document');
+      toast.error('Failed to upload document');
     } finally {
       setUploading(false);
       setSelectedDocType('');
     }
   };
-  
-  
+
+  const getDocumentLabel = (docType) => {
+    const labels = {
+      id: 'ID Document',
+      certificate: 'Latest Certificate',
+      residence: 'Proof of Residence',
+      payment: 'Proof of Payment'
+    };
+    return labels[docType] || docType;
+  };
 
   const removeDocument = async (docId) => {
     if (!user) return;
