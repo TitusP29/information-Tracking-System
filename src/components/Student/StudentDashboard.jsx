@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaUserCircle, FaGraduationCap, FaFileAlt, FaBell, FaSignOutAlt } from "react-icons/fa";
+import { FaUserCircle, FaGraduationCap, FaFileAlt, FaBell, FaSignOutAlt, FaCheck, FaTimes } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from '../../../supabaseClient';
 
@@ -7,6 +7,8 @@ export default function StudentDashboard() {
   const { user } = useAuth();
   const [studentData, setStudentData] = useState(null);
   const [applications, setApplications] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [documents, setDocuments] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -47,6 +49,26 @@ export default function StudentDashboard() {
           setStudentData(latestRegistration);
           setApplications(applicationsWithProgress);
         }
+
+        // Fetch notifications
+        const { data: notificationsData, error: notificationsError } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('recipient_id', user?.id)
+          .order('created_at', { ascending: false });
+
+        if (notificationsError) throw notificationsError;
+        setNotifications(notificationsData || []);
+
+        // Fetch documents
+        const { data: docsData, error: docsError } = await supabase
+          .from('documents')
+          .select('*, attachments(*)')
+          .eq('user_id', user?.id);
+
+        if (docsError) throw docsError;
+        setDocuments(docsData?.[0] || null);
+
       } catch (err) {
         console.error('Error fetching student data:', err);
         setError(err.message);
@@ -59,6 +81,55 @@ export default function StudentDashboard() {
       fetchStudentData();
     }
   }, [user]);
+
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'success':
+        return <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>;
+      case 'warning':
+        return <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
+          <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>;
+      case 'error':
+        return <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </div>;
+      default:
+        return <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>;
+    }
+  };
+
+  const getDocumentStatus = (docType) => {
+    if (!documents) return false;
+    return documents[`${docType}_uploaded`];
+  };
+
+  const getMissingDocuments = () => {
+    const requiredDocs = ['id', 'certificate', 'residence', 'payment'];
+    return requiredDocs.filter(doc => !getDocumentStatus(doc));
+  };
+
+  const getDocumentLabel = (docType) => {
+    const labels = {
+      id: 'ID Document',
+      certificate: 'Latest Certificate',
+      residence: 'Proof of Residence',
+      payment: 'Proof of Payment'
+    };
+    return labels[docType] || docType;
+  };
 
   if (loading) {
     return (
@@ -135,13 +206,67 @@ export default function StudentDashboard() {
 
       {/* Additional Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white p-4 rounded shadow flex items-center">
-          <FaFileAlt className="text-3xl text-yellow-500 mr-4" />
-          <p className="text-lg font-semibold">Documents</p>
+        <div className="bg-white p-4 rounded shadow">
+          <div className="flex items-center mb-4">
+            <FaFileAlt className="text-3xl text-yellow-500 mr-4" />
+            <p className="text-lg font-semibold">Documents</p>
+          </div>
+          {documents ? (
+            getMissingDocuments().length === 0 ? (
+              <div className="flex items-center text-green-600">
+                <FaCheck className="mr-2" />
+                <p>All required documents have been uploaded</p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-gray-600 mb-2">Missing documents:</p>
+                <ul className="space-y-1">
+                  {getMissingDocuments().map(doc => (
+                    <li key={doc} className="flex items-center text-red-600">
+                      <FaTimes className="mr-2" />
+                      <span>{getDocumentLabel(doc)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          ) : (
+            <p className="text-gray-600">No document information available</p>
+          )}
         </div>
-        <div className="bg-white p-4 rounded shadow flex items-center">
-          <FaBell className="text-3xl text-purple-500 mr-4" />
-          <p className="text-lg font-semibold">Notifications</p>
+        <div className="bg-white p-4 rounded shadow">
+          <div className="flex items-center mb-2">
+            <FaBell className="text-3xl text-purple-500 mr-4" />
+            <p className="text-lg font-semibold">Notifications</p>
+          </div>
+          <div className="space-y-2">
+            {notifications.length > 0 ? (
+              notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`p-3 rounded-lg border ${
+                    !notification.read ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-start space-x-3">
+                    {getNotificationIcon(notification.type)}
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{notification.title}</p>
+                      <p className="text-sm text-gray-600">{notification.message}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(notification.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                    {!notification.read && (
+                      <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-sm">No notifications</p>
+            )}
+          </div>
         </div>
       </div>
     </>
