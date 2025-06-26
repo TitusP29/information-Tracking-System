@@ -61,92 +61,125 @@ const ManageCourse = () => {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-full max-w-md relative">
+          <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative border border-gray-200">
             <button
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl"
               onClick={() => setShowModal(false)}
               aria-label="Close"
             >&#10005;</button>
-            <h2 className="text-xl font-bold mb-4">Create New Course</h2>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <input
-                type="text"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Course Name"
-                className="border rounded w-full p-2"
-                required
-              />
-              <input
-                type="text"
-                name="duration"
-                value={form.duration}
-                onChange={handleChange}
-                placeholder="Duration (e.g. 3 months)"
-                className="border rounded w-full p-2"
-                required
-              />
-              <select
-                name="mode"
-                value={form.mode}
-                onChange={handleChange}
-                className="border rounded w-full p-2"
-                required
-              >
-                <option value="Full-time">Full-time</option>
-                <option value="Part-time">Part-time</option>
-              </select>
-              <select
-                name="level"
-                value={form.level}
-                onChange={handleChange}
-                className="border rounded w-full p-2"
-                required
-              >
-                <option value="Beginner">Beginner</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Advanced">Advanced</option>
-              </select>
-              <textarea
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                placeholder="Course Description"
-                className="border rounded w-full p-2"
-                required
-              />
-              <select
-                name="status"
-                value={form.status}
-                onChange={handleChange}
-                className="border rounded w-full p-2"
-                required
-              >
-                <option value="Open">Open</option>
-                <option value="Closed">Closed</option>
-              </select>
-              <div className="flex gap-2">
+            <h2 className="text-2xl font-bold mb-6 text-center">Create New Course</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Course Name</label>
                 <input
-                  type="date"
-                  name="opening_date"
-                  value={form.opening_date}
+                  id="name"
+                  type="text"
+                  name="name"
+                  value={form.name}
                   onChange={handleChange}
-                  className="border rounded w-full p-2"
-                  required
-                />
-                <input
-                  type="date"
-                  name="closing_date"
-                  value={form.closing_date}
-                  onChange={handleChange}
-                  className="border rounded w-full p-2"
+                  className="border rounded-lg w-full p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   required
                 />
               </div>
+              <div>
+                <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                <input
+                  id="duration"
+                  type="text"
+                  name="duration"
+                  value={form.duration}
+                  onChange={handleChange}
+                  placeholder="e.g. 3 months"
+                  className="border rounded-lg w-full p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="mode" className="block text-sm font-medium text-gray-700 mb-1">Mode</label>
+                <select
+                  id="mode"
+                  name="mode"
+                  value={form.mode}
+                  onChange={handleChange}
+                  className="border rounded-lg w-full p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  required
+                >
+                  <option value="Full-time">Full-time</option>
+                  <option value="Part-time">Part-time</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="level" className="block text-sm font-medium text-gray-700 mb-1">Level</label>
+                <select
+                  id="level"
+                  name="level"
+                  value={form.level}
+                  onChange={handleChange}
+                  className="border rounded-lg w-full p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  required
+                >
+                  <option value="Beginner">Beginner</option>
+                  <option value="Intermediate">Intermediate</option>
+                  <option value="Advanced">Advanced</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Course Description</label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={form.description}
+                  onChange={handleChange}
+                  className="border rounded-lg w-full p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  id="status"
+                  name="status"
+                  value={form.status}
+                  onChange={handleChange}
+                  className="border rounded-lg w-full p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  required
+                >
+                  <option value="Open">Open</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Course Dates</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label htmlFor="opening_date" className="block text-xs text-gray-500 mb-1">Opening Date</label>
+                    <input
+                      id="opening_date"
+                      type="date"
+                      name="opening_date"
+                      value={form.opening_date}
+                      onChange={handleChange}
+                      className="border rounded-lg w-full p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="closing_date" className="block text-xs text-gray-500 mb-1">Closing Date</label>
+                    <input
+                      id="closing_date"
+                      type="date"
+                      name="closing_date"
+                      value={form.closing_date}
+                      onChange={handleChange}
+                      className="border rounded-lg w-full p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
               <button
                 type="submit"
-                className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 w-full"
+                className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 w-full font-semibold transition"
                 disabled={loading}
               >
                 {loading ? 'Creating...' : 'Create Course'}

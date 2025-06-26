@@ -17,6 +17,26 @@ const Notifications = () => {
   useEffect(() => {
     fetchStudents();
     fetchNotifications();
+    
+    // Subscribe to new notifications
+    const subscription = supabase
+      .channel('notifications')
+      .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications',
+          filter: `recipient_id=eq.admin`
+        }, 
+        (payload) => {
+          setNotifications(prev => [payload.new, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchStudents = async () => {
@@ -34,6 +54,7 @@ const Notifications = () => {
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
+      .or(`recipient_id.eq.${user.id},recipient_id.eq.admin`)
       .order('created_at', { ascending: false });
     
     if (!error && data) {
@@ -199,7 +220,7 @@ const Notifications = () => {
       {showMessageForm && (
         <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Send Message to Students</h2>
-          <form onSubmit={handleSendMessage} className="space-y-4">
+          <form onSubmit={handleSendMessage} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Select Students
@@ -212,7 +233,7 @@ const Notifications = () => {
                       id={`student-${student.id}`}
                       checked={selectedStudents.includes(student.user_id)}
                       onChange={() => handleStudentSelect(student.user_id)}
-                      className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <label htmlFor={`student-${student.id}`} className="text-sm text-gray-700">
                       {student.first_name} {student.surname} - {student.course}
@@ -230,7 +251,7 @@ const Notifications = () => {
                 name="type"
                 value={messageForm.type}
                 onChange={handleMessageChange}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
               >
                 <option value="info">Information</option>
                 <option value="success">Success</option>
@@ -248,7 +269,7 @@ const Notifications = () => {
                 name="subject"
                 value={messageForm.subject}
                 onChange={handleMessageChange}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 placeholder="Enter message subject"
               />
             </div>
@@ -261,7 +282,7 @@ const Notifications = () => {
                 name="content"
                 value={messageForm.content}
                 onChange={handleMessageChange}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 rows="4"
                 placeholder="Type your message here..."
               />

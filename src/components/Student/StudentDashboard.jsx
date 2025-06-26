@@ -215,7 +215,7 @@ export default function StudentDashboard() {
             getMissingDocuments().length === 0 ? (
               <div className="flex items-center text-green-600">
                 <FaCheck className="mr-2" />
-                <p>All required documents have been uploaded</p>
+                <p>All documents have been uploaded successfully</p>
               </div>
             ) : (
               <div>
@@ -229,7 +229,7 @@ export default function StudentDashboard() {
                   ))}
                 </ul>
               </div>
-            )
+            ) 
           ) : (
             <p className="text-gray-600">No document information available</p>
           )}

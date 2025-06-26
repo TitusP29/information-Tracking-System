@@ -127,6 +127,21 @@ const RegistrationForm = () => {
 
       if (progressError) throw progressError;
 
+      // Create notification for admin about new application
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert([{
+          type: 'info',
+          title: 'New Student Application',
+          message: `New application received from ${formData.first_name} ${formData.surname} for ${formData.course}`,
+          recipient_id: 'admin', // This will be sent to all admins
+          read: false
+        }]);
+
+      if (notificationError) {
+        console.error('Error creating notification:', notificationError);
+      }
+
       setSuccess('Registration submitted successfully!');
       
       // Navigate back to dashboard after a short delay
@@ -145,6 +160,54 @@ const RegistrationForm = () => {
     <form className="max-w-5xl mx-auto p-8 bg-white rounded shadow" onSubmit={handleSubmit}>
       {error && <div className="mb-4 text-red-600 font-semibold">{error}</div>}
       {success && <div className="mb-4 text-green-600 font-semibold">{success}</div>}
+      
+      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8">
+        <h3 className="text-xl font-semibold mb-4 text-gray-800">Fee Structure Summary</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+              <span className="font-medium">Registration Fee:</span>
+              <span className="text-gray-700">R2,799.84</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+              <span className="font-medium">Skills Programme Fee:</span>
+              <span className="text-gray-700">R5,598.72</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+              <span className="font-medium">Assessment & Moderation:</span>
+              <span className="text-gray-700">R300 each (PoE, Internal, External)</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+              <span className="font-medium">Certification:</span>
+              <span className="text-gray-700">R125.04</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+              <span className="font-medium">Statement of Results:</span>
+              <span className="text-gray-700">R125.04</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+              <span className="font-medium">Final Assessment:</span>
+              <span className="text-gray-700">R936.00</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+              <span className="font-medium">PPE:</span>
+              <span className="text-gray-700">To be determined</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+              <span className="font-medium">Optional Extras:</span>
+              <span className="text-gray-700">To be determined</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded">
+          <p className="text-sm text-red-600 font-medium">
+            IMPORTANT: Kindly upload a certified copy of your ID, Proof of Resident and Latest Certificates, when submitting your Application.
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <input type="text" name="national_id" value={formData.national_id} onChange={handleChange} placeholder="National ID No" className="border rounded px-3 py-2" required />
         <input type="text" name="surname" value={formData.surname} onChange={handleChange} placeholder="Surname" className="border rounded px-3 py-2" required />

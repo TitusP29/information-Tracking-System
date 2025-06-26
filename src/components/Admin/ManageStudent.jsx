@@ -56,7 +56,7 @@ export default function ManageStudents() {
   const filteredApplications = applications.filter(app =>
     (app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     app.course.toLowerCase().includes(searchTerm.toLowerCase())) &&
-    app.status === 'complete'
+    app.status === 'approved'
   );
 
   if (loading) {
@@ -78,12 +78,14 @@ export default function ManageStudents() {
   return (
     <div className="p-6">
       <div className="mb-6">
+        <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">Search by name or course</label>
         <input
+          id="search"
           type="text"
-          placeholder="Search by name or course..."
+          placeholder="Type to search..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full p-2 border rounded"
+          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition mb-4"
         />
       </div>
 
